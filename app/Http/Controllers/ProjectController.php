@@ -388,6 +388,7 @@ class ProjectController extends Controller
             'text' => ['nullable', 'string', 'max:100'],
             'image_path' => ['nullable', 'string'],
             'position' => ['nullable', 'string'],
+            'positions' => ['nullable', 'array'],
             'opacity' => ['nullable', 'numeric', 'min:10', 'max:100'],
             'size' => ['nullable', 'numeric', 'min:5', 'max:50'],
             'margin' => ['nullable', 'numeric'],
@@ -487,5 +488,197 @@ class ProjectController extends Controller
             'Content-Type' => 'image/jpeg',
             'Cache-Control' => 'no-cache, must-revalidate',
         ]);
+    }
+
+    public function steps(string $slug): View
+    {
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            abort(404, 'Project not found.');
+        }
+
+        $selectedFrames = $this->projectService->getSelectedFrames($slug);
+        $recipeSteps = $this->projectService->getRecipeSteps($slug);
+
+        return view('project.steps', compact('project', 'selectedFrames', 'recipeSteps'));
+    }
+
+    public function saveSteps(Request $request, string $slug): JsonResponse|RedirectResponse
+    {
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Project not found'], 404);
+            }
+            abort(404, 'Project not found.');
+        }
+
+        $validated = $request->validate([
+            'style' => ['nullable', 'array'],
+            'style.layout' => ['nullable', 'string', 'in:bottom-banner,lower-third,top-banner,badge-only'],
+            'style.bg_color' => ['nullable', 'string', 'max:20'],
+            'style.bg_opacity' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'style.text_color' => ['nullable', 'string', 'max:20'],
+            'style.badge_color' => ['nullable', 'string', 'max:20'],
+            'style.badge_text_color' => ['nullable', 'string', 'max:20'],
+            'style.show_badge' => ['nullable', 'boolean'],
+            'style.font_size' => ['nullable', 'string', 'in:small,medium,large'],
+            'items' => ['nullable', 'array'],
+            'items.*.frame_id' => ['required', 'string'],
+            'items.*.step_number' => ['nullable', 'integer', 'min:1'],
+            'items.*.title' => ['nullable', 'string', 'max:150'],
+            'items.*.description' => ['nullable', 'string', 'max:500'],
+            'items.*.ingredients' => ['nullable', 'string', 'max:250'],
+            'items.*.enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $updatedSteps = $this->projectService->saveRecipeSteps($slug, $validated);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Recipe steps saved successfully.',
+                'steps' => $updatedSteps,
+            ]);
+        }
+
+        return redirect()->route('project.steps', $slug)
+            ->with('status', 'Recipe steps saved successfully!');
+    }
+
+    public function stepFrameImage(string $slug, string $filename): BinaryFileResponse
+    {
+        $filename = basename($filename);
+        $filePath = $this->projectService->getStepFramePath($slug, $filename);
+
+        if (! $filePath || ! file_exists($filePath)) {
+            abort(404, 'Step frame image not found.');
+        }
+
+        return response()->file($filePath, [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]);
+    }
+
+    public function export(string $slug): View
+    {
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            abort(404, 'Project not found.');
+        }
+
+        $selectedFrames = $this->projectService->getSelectedFrames($slug);
+        $recipeSteps = $this->projectService->getRecipeSteps($slug);
+        $collageConfig = $this->projectService->getCollageSettings($slug);
+
+        return view('project.export', compact('project', 'selectedFrames', 'recipeSteps', 'collageConfig'));
+    }
+
+    public function saveCollage(Request $request, string $slug): JsonResponse|RedirectResponse
+    {
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Project not found'], 404);
+            }
+            abort(404, 'Project not found.');
+        }
+
+        $validated = $request->validate([
+            'layout' => ['nullable', 'string', 'in:auto-grid,grid-2x2,grid-3x2,hero-strip,vertical-story'],
+            'header_enabled' => ['nullable', 'boolean'],
+            'title' => ['nullable', 'string', 'max:150'],
+            'subtitle' => ['nullable', 'string', 'max:250'],
+            'prep_time' => ['nullable', 'string', 'max:50'],
+            'cook_time' => ['nullable', 'string', 'max:50'],
+            'servings' => ['nullable', 'string', 'max:50'],
+            'show_brand' => ['nullable', 'boolean'],
+            'footer_enabled' => ['nullable', 'boolean'],
+            'footer_text' => ['nullable', 'string', 'max:100'],
+            'bg_color' => ['nullable', 'string', 'max:20'],
+            'gap' => ['nullable', 'integer', 'min:0', 'max:64'],
+            'padding' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'format' => ['nullable', 'string', 'in:jpg,png'],
+            'quality' => ['nullable', 'integer', 'min:50', 'max:100'],
+            'scale' => ['nullable', 'integer', 'in:1,2'],
+        ]);
+
+        $updatedCollage = $this->projectService->saveCollageSettings($slug, $validated);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Collage settings saved successfully.',
+                'collage' => $updatedCollage,
+            ]);
+        }
+
+        return redirect()->route('project.export', $slug)
+            ->with('status', 'Collage settings saved successfully!');
+    }
+
+    public function collageImage(string $slug): BinaryFileResponse
+    {
+        $filePath = $this->projectService->getCollageImagePath($slug);
+
+        if (! $filePath || ! file_exists($filePath)) {
+            abort(404, 'Collage image could not be rendered or no frames exist.');
+        }
+
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $mimeType = $extension === 'png' ? 'image/png' : 'image/jpeg';
+
+        return response()->file($filePath, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]);
+    }
+
+    public function downloadCollage(string $slug): BinaryFileResponse
+    {
+        $filePath = $this->projectService->getCollageImagePath($slug, true);
+
+        if (! $filePath || ! file_exists($filePath)) {
+            abort(404, 'Collage image not available for download.');
+        }
+
+        $project = $this->projectService->load($slug);
+        $projectName = Str::slug($project['name'] ?? $slug, '_');
+        $ext = pathinfo($filePath, PATHINFO_EXTENSION);
+        $downloadName = sprintf('%s_recipe_collage.%s', $projectName, $ext);
+
+        return response()->download($filePath, $downloadName);
+    }
+
+    public function downloadZip(string $slug): BinaryFileResponse
+    {
+        $zipPath = $this->projectService->createProjectZipArchive($slug);
+
+        if (! $zipPath || ! file_exists($zipPath)) {
+            abort(500, 'Failed to create recipe zip bundle.');
+        }
+
+        $project = $this->projectService->load($slug);
+        $projectName = Str::slug($project['name'] ?? $slug, '_');
+        $downloadName = sprintf('%s_complete_recipe_bundle.zip', $projectName);
+
+        return response()->download($zipPath, $downloadName);
+    }
+
+    public function downloadStepCard(string $slug, string $filename): BinaryFileResponse
+    {
+        $filename = basename($filename);
+        $filePath = $this->projectService->getStepFramePath($slug, $filename);
+
+        if (! $filePath || ! file_exists($filePath)) {
+            abort(404, 'Step card not found.');
+        }
+
+        return response()->download($filePath, $filename);
     }
 }

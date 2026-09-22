@@ -136,8 +136,16 @@
 
             <!-- 4. 9-Point Positioning Grid -->
             <div>
-                <label class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-2.5">Placement Position</label>
-                <div class="grid grid-cols-3 gap-2 max-w-[240px]">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs uppercase tracking-wider text-gray-400 font-bold">
+                        Placement Position <span id="pos-frame-indicator" class="text-amber-400 normal-case font-medium text-[11px]">(Step #1)</span>
+                    </label>
+                    <button type="button" onclick="applyPositionToAllFrames()" class="text-[11px] text-amber-400 hover:text-amber-300 underline font-semibold transition cursor-pointer flex items-center gap-1" title="Apply this position to all frames in the project">
+                        <span>⚡</span>
+                        <span>Apply to All Frames</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 max-w-[260px]">
                     @php
                         $positions = [
                             'top-left' => '↖ Top-L',
@@ -282,8 +290,27 @@
                     </div>
 
                     <div class="p-2 bg-[#12192b] flex items-center justify-between text-[11px]">
-                        <span class="text-gray-300 font-semibold truncate max-w-[90px]">Step {{ $index + 1 }}</span>
-                        <span class="text-gray-500 font-mono text-[10px]">{{ $frame['formatted_time'] ?? '' }}</span>
+                        <div>
+                            <span class="text-gray-300 font-semibold block truncate max-w-[70px]">Step {{ $index + 1 }}</span>
+                            <span class="text-gray-500 font-mono text-[9px]">{{ $frame['formatted_time'] ?? '' }}</span>
+                        </div>
+                        @php
+                            $framePos = $watermarkConfig['positions'][$frameId] ?? ($watermarkConfig['positions'][$frame['filename']] ?? ($watermarkConfig['position'] ?? 'bottom-right'));
+                            $shortLabels = [
+                                'top-left' => '↖ Top-L',
+                                'top-center' => '↑ Top',
+                                'top-right' => '↗ Top-R',
+                                'left' => '← Left',
+                                'center' => '• Center',
+                                'right' => '→ Right',
+                                'bottom-left' => '↙ Btm-L',
+                                'bottom-center' => '↓ Btm',
+                                'bottom-right' => '↘ Btm-R',
+                            ];
+                        @endphp
+                        <span id="thumb-pos-badge-{{ $frameId }}" class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-amber-400 font-bold border border-gray-700" title="Watermark Position">
+                            {{ $shortLabels[$framePos] ?? $framePos }}
+                        </span>
                     </div>
                 </div>
             @endforeach
@@ -297,8 +324,26 @@
     const frames = @json($selectedFrames);
     const initialWm = @json($watermarkConfig);
 
+    const positionLabels = {
+        'top-left': '↖ Top-L',
+        'top-center': '↑ Top',
+        'top-right': '↗ Top-R',
+        'left': '← Left',
+        'center': '• Center',
+        'right': '→ Right',
+        'bottom-left': '↙ Btm-L',
+        'bottom-center': '↓ Btm',
+        'bottom-right': '↘ Btm-R',
+    };
+
+    let perFramePositions = (initialWm && initialWm.positions && typeof initialWm.positions === 'object')
+        ? JSON.parse(JSON.stringify(initialWm.positions))
+        : {};
+
+    let defaultPosition = initialWm.position || 'bottom-right';
+
     let activeType = initialWm.type || 'image';
-    let activePosition = initialWm.position || 'bottom-right';
+    let activePosition = defaultPosition;
     let activeColor = initialWm.color || '#ffffff';
     let logoImageSrc = initialWm.image_path ? `{{ route('project.watermark.logo.image', $project['slug']) }}` : `{{ asset('images/default-watermark.png') }}`;
     let logoImgElement = null;
@@ -307,12 +352,16 @@
     let activeFrameUrl = frames.length > 0 ? `{{ url('/project') }}/${projectSlug}/frame/${frames[0].filename}/cropped` : '';
     let currentImageElement = new Image();
 
+    if (activeFrameId && (perFramePositions[activeFrameId] || perFramePositions[frames[0]?.filename])) {
+        activePosition = perFramePositions[activeFrameId] || perFramePositions[frames[0]?.filename];
+    }
+
     const canvas = document.getElementById('wm-canvas');
     const ctx = canvas.getContext('2d');
 
     document.addEventListener('DOMContentLoaded', () => {
         setWatermarkType(activeType);
-        setPosition(activePosition);
+        highlightPositionBtn(activePosition);
         
         if (logoImageSrc) {
             logoImgElement = new Image();
@@ -344,6 +393,12 @@
         });
 
         document.getElementById('active-frame-label').innerText = `Step #${stepNumber}`;
+        const ind = document.getElementById('pos-frame-indicator');
+        if (ind) ind.innerText = `(Step #${stepNumber})`;
+
+        const frameObj = frames[stepNumber - 1];
+        activePosition = perFramePositions[frameId] || (frameObj ? perFramePositions[frameObj.filename] : null) || defaultPosition;
+        highlightPositionBtn(activePosition);
 
         currentImageElement = new Image();
         currentImageElement.crossOrigin = 'anonymous';
@@ -356,7 +411,7 @@
         activeType = type;
 
         document.querySelectorAll('.type-btn').forEach(btn => {
-            btn.className = 'type-btn p-3 rounded-2xl border transition text-center flex flex-col items-center justify-center gap-1 shadow-sm bg-gray-800/80 hover:bg-gray-700 text-gray-300 border-gray-700/80';
+            btn.className = 'type-btn p-3 rounded-2xl border transition text-center flex flex-col items-center justify-center gap-1 shadow-sm bg-gray-800/80 hover:bg-gray-750 text-gray-300 border-gray-700/80';
         });
 
         const activeBtn = document.getElementById(`type-btn-${type}`);
@@ -381,7 +436,19 @@
 
     function setPosition(posKey) {
         activePosition = posKey;
+        if (activeFrameId) {
+            perFramePositions[activeFrameId] = posKey;
+            const currentFrame = frames.find(f => (f.id || f.filename) === activeFrameId);
+            if (currentFrame && currentFrame.filename) {
+                perFramePositions[currentFrame.filename] = posKey;
+            }
+            updateThumbPosBadge(activeFrameId, posKey);
+        }
+        highlightPositionBtn(posKey);
+        updateWatermarkLive();
+    }
 
+    function highlightPositionBtn(posKey) {
         document.querySelectorAll('.pos-btn').forEach(btn => {
             if (btn.dataset.position === posKey) {
                 btn.className = 'pos-btn py-2 rounded-xl text-[11px] font-bold border transition text-center shadow-md bg-amber-600 text-white border-amber-500 shadow-amber-900/40';
@@ -389,7 +456,24 @@
                 btn.className = 'pos-btn py-2 rounded-xl text-[11px] font-bold border transition text-center shadow-sm bg-gray-800/80 hover:bg-gray-700 text-gray-300 border-gray-700/80';
             }
         });
+    }
 
+    function updateThumbPosBadge(frameId, posKey) {
+        const badge = document.getElementById(`thumb-pos-badge-${frameId}`);
+        if (badge) {
+            badge.innerText = positionLabels[posKey] || posKey;
+        }
+    }
+
+    function applyPositionToAllFrames() {
+        defaultPosition = activePosition;
+        frames.forEach(f => {
+            const fid = f.id || f.filename;
+            perFramePositions[fid] = activePosition;
+            if (f.filename) perFramePositions[f.filename] = activePosition;
+            updateThumbPosBadge(fid, activePosition);
+        });
+        showToast(`Position "${positionLabels[activePosition] || activePosition}" applied to all frames!`);
         updateWatermarkLive();
     }
 
@@ -595,6 +679,12 @@
         setTextColor('#ffffff');
         setWatermarkType('image');
         setPosition('bottom-right');
+        defaultPosition = 'bottom-right';
+        perFramePositions = {};
+        frames.forEach(f => {
+            const fid = f.id || f.filename;
+            updateThumbPosBadge(fid, 'bottom-right');
+        });
 
         logoImageSrc = `{{ route('project.watermark.logo.image', $project['slug']) }}`;
         document.getElementById('logo-preview-img').src = logoImageSrc;
@@ -626,7 +716,8 @@
             type: activeType,
             enabled: activeType !== 'none',
             text: document.getElementById('wm-text-input').value.trim(),
-            position: activePosition,
+            position: defaultPosition,
+            positions: perFramePositions,
             opacity: parseInt(document.getElementById('opacity-slider').value),
             size: parseInt(document.getElementById('size-slider').value),
             margin: marginVal,
@@ -652,7 +743,7 @@
             }
             if (data.success) {
                 if (proceedAfter) {
-                    alert('Watermark settings saved! Next: Recipe Steps (Phase 6) will be activated in the next step.');
+                    window.location.href = "{{ route('project.steps', $project['slug']) }}";
                 } else if (!silent) {
                     showToast('Watermark saved successfully!');
                 }

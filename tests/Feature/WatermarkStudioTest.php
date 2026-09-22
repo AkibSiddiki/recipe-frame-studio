@@ -309,3 +309,40 @@ test('default watermark logo is served when image_path uses default asset', func
     $response->assertOk();
     $response->assertHeader('Content-Type', 'image/png');
 });
+
+test('watermark position can be customized differently for every frame', function () {
+    createWatermarkTestingProject('per-frame-wm-project');
+
+    $response = $this->postJson(route('project.watermark.save', 'per-frame-wm-project'), [
+        'type' => 'text',
+        'text' => '@PerFrameChef',
+        'position' => 'bottom-right',
+        'positions' => [
+            'frame_0001.jpg' => 'top-left',
+            'frame_0002.jpg' => 'bottom-left',
+        ],
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'watermark' => [
+            'position' => 'bottom-right',
+            'positions' => [
+                'frame_0001.jpg' => 'top-left',
+                'frame_0002.jpg' => 'bottom-left',
+            ],
+        ],
+    ]);
+
+    $projectService = app(ProjectService::class);
+    $loadedProject = $projectService->load('per-frame-wm-project');
+
+    expect($loadedProject['watermark']['positions']['frame_0001.jpg'])->toBe('top-left');
+    expect($loadedProject['watermark']['positions']['frame_0002.jpg'])->toBe('bottom-left');
+
+    // Generate watermarked frame with the per-frame position override
+    $wmPath1 = $projectService->getWatermarkedFramePath('per-frame-wm-project', 'frame_0001.jpg');
+    expect($wmPath1)->not->toBeNull();
+    expect(File::exists($wmPath1))->toBeTrue();
+});

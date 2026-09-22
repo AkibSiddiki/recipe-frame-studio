@@ -14,22 +14,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
-        Menu::create(
-            Menu::app(),
-            Menu::label('File')
-                ->submenu(
-                    Menu::route('project.create', 'New Project')
-                        ->accelerator('CmdOrCtrl+N'),
-                    Menu::separator(),
-                    Menu::route('settings', 'Settings')
-                        ->accelerator('CmdOrCtrl+,'),
-                    Menu::separator(),
-                    Menu::quit(),
-                ),
-            Menu::edit(),
-            Menu::view(),
-            Menu::window(),
-        );
+        Menu::create();
 
         Window::open()
             ->width(1280)
@@ -38,7 +23,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->minHeight(700)
             ->title('Recipe Frame Studio')
             ->route('home')
-            ->resizable();
+            ->resizable()
+            ->hideMenu();
     }
 
     /**

@@ -30,6 +30,17 @@ Route::post('/project/{slug}/watermark/logo', [ProjectController::class, 'upload
 Route::get('/project/{slug}/watermark/logo', [ProjectController::class, 'watermarkLogoImage'])->name('project.watermark.logo.image');
 Route::get('/project/{slug}/frame/{filename}/watermarked', [ProjectController::class, 'watermarkedFrameImage'])->name('project.frame.watermarked');
 
+Route::get('/project/{slug}/steps', [ProjectController::class, 'steps'])->name('project.steps');
+Route::post('/project/{slug}/steps', [ProjectController::class, 'saveSteps'])->name('project.steps.save');
+Route::get('/project/{slug}/frame/{filename}/step-image', [ProjectController::class, 'stepFrameImage'])->name('project.frame.step-image');
+
+Route::get('/project/{slug}/export', [ProjectController::class, 'export'])->name('project.export');
+Route::post('/project/{slug}/export', [ProjectController::class, 'saveCollage'])->name('project.export.save');
+Route::get('/project/{slug}/export/collage-image', [ProjectController::class, 'collageImage'])->name('project.export.collage-image');
+Route::get('/project/{slug}/export/download/collage', [ProjectController::class, 'downloadCollage'])->name('project.export.download.collage');
+Route::get('/project/{slug}/export/download/zip', [ProjectController::class, 'downloadZip'])->name('project.export.download.zip');
+Route::get('/project/{slug}/export/download/step/{filename}', [ProjectController::class, 'downloadStepCard'])->name('project.export.download.step');
+
 Route::get('/projects/recent', [ProjectController::class, 'recent'])->name('projects.recent');
 
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings');

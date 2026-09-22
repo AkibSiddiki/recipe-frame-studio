@@ -68,6 +68,8 @@
                                     elseif ($key === 'frames') $stepUrl = route('project.frames', $slug);
                                     elseif ($key === 'crop') $stepUrl = route('project.crop', $slug);
                                     elseif ($key === 'watermark') $stepUrl = route('project.watermark', $slug);
+                                    elseif ($key === 'recipe') $stepUrl = route('project.steps', $slug);
+                                    elseif ($key === 'export') $stepUrl = route('project.export', $slug);
                                 }
                             @endphp
                             <li>
