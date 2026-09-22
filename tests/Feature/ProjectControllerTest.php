@@ -170,3 +170,48 @@ test('native dialog api endpoints return json responses', function () {
     $response2 = $this->getJson('/api/dialog/open-ffmpeg');
     $response2->assertStatus(200)->assertJsonStructure(['path']);
 });
+
+test('destroy deletes project and redirects to home', function () {
+    $mockProjectService = Mockery::mock(ProjectService::class);
+    $mockProjectService->shouldReceive('load')->with('test-recipe')->andReturn([
+        'slug' => 'test-recipe',
+        'name' => 'Test Recipe',
+    ]);
+    $mockProjectService->shouldReceive('delete')->with('test-recipe')->once()->andReturn(true);
+    $this->app->instance(ProjectService::class, $mockProjectService);
+
+    $response = $this->delete('/project/test-recipe');
+
+    $response->assertRedirect('/')
+        ->assertSessionHas('status', "Project 'Test Recipe' was deleted successfully.");
+});
+
+test('destroy returns json when requested as json', function () {
+    $mockProjectService = Mockery::mock(ProjectService::class);
+    $mockProjectService->shouldReceive('load')->with('test-recipe')->andReturn([
+        'slug' => 'test-recipe',
+        'name' => 'Test Recipe',
+    ]);
+    $mockProjectService->shouldReceive('delete')->with('test-recipe')->once()->andReturn(true);
+    $this->app->instance(ProjectService::class, $mockProjectService);
+
+    $response = $this->deleteJson('/project/test-recipe');
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'message' => "Project 'Test Recipe' deleted successfully.",
+        ]);
+});
+
+test('destroy handles non-existent project gracefully', function () {
+    $mockProjectService = Mockery::mock(ProjectService::class);
+    $mockProjectService->shouldReceive('load')->with('missing-recipe')->andReturn(null);
+    $mockProjectService->shouldReceive('delete')->with('missing-recipe')->once()->andReturn(false);
+    $this->app->instance(ProjectService::class, $mockProjectService);
+
+    $response = $this->delete('/project/missing-recipe');
+
+    $response->assertRedirect('/')
+        ->assertSessionHas('error');
+});

@@ -11,6 +11,13 @@
             <a href="{{ route('home') }}" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm transition">
                 ← All Projects
             </a>
+            <button type="button" 
+                    onclick="openDeleteProjectModal()" 
+                    class="px-3.5 py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 hover:text-white rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm"
+                    title="Delete this project">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <span>Delete</span>
+            </button>
         </div>
     </div>
 
@@ -208,5 +215,54 @@
         btn.disabled = true;
         btn.classList.add('opacity-50', 'cursor-not-allowed');
     });
+
+    function openDeleteProjectModal() {
+        document.getElementById('delete-project-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteProjectModal() {
+        document.getElementById('delete-project-modal').classList.add('hidden');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDeleteProjectModal();
+    });
+    document.getElementById('delete-project-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteProjectModal();
+    });
 </script>
+
+<!-- Delete Project Modal -->
+<div id="delete-project-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-[#1a1a2e] border border-gray-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex items-center space-x-3 mb-4 text-rose-400">
+            <div class="w-10 h-10 rounded-full bg-rose-950/60 border border-rose-800/80 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-white">Delete Project</h3>
+                <p class="text-xs text-gray-400">This action cannot be undone.</p>
+            </div>
+        </div>
+        
+        <p class="text-sm text-gray-300 mb-6">
+            Are you sure you want to permanently delete <strong class="text-amber-400">{{ $project['name'] ?? 'this project' }}</strong>? All extracted frames, recipe steps, and collages will be erased.
+        </p>
+
+        <form method="POST" action="{{ route('project.destroy', $project['slug']) }}">
+            @csrf
+            @method('DELETE')
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeDeleteProjectModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition shadow-md shadow-rose-950/50">
+                    Delete Project
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection

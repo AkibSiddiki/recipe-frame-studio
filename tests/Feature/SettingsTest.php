@@ -2,6 +2,7 @@
 
 use App\Services\AppSettingService;
 use App\Services\FfmpegService;
+use App\Services\ProjectService;
 
 test('settings page renders successfully', function () {
     $response = $this->get('/settings');
@@ -66,4 +67,23 @@ test('it returns status from ffmpeg status endpoint', function () {
             'is_available' => true,
             'version' => 'ffmpeg version 6.0',
         ]);
+});
+
+test('settings page renders danger zone', function () {
+    $response = $this->get('/settings');
+
+    $response->assertStatus(200)
+        ->assertSee('Danger Zone')
+        ->assertSee('Clear All App Data');
+});
+
+test('clear data purges projects and redirects with status', function () {
+    $mockProjectService = Mockery::mock(ProjectService::class);
+    $mockProjectService->shouldReceive('deleteAll')->once()->andReturn(3);
+    $this->app->instance(ProjectService::class, $mockProjectService);
+
+    $response = $this->post('/settings/clear-data');
+
+    $response->assertRedirect('/settings')
+        ->assertSessionHas('status', 'Application data cleared: 3 project(s) and temporary files were deleted.');
 });

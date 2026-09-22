@@ -11,6 +11,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
 Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
 Route::get('/project/{slug}', [ProjectController::class, 'show'])->name('project.show');
+Route::delete('/project/{slug}', [ProjectController::class, 'destroy'])->name('project.destroy');
 Route::get('/project/{slug}/thumbnail', [ProjectController::class, 'thumbnail'])->name('project.thumbnail');
 Route::get('/project/{slug}/video-info', [ProjectController::class, 'videoInfo'])->name('project.video-info');
 Route::get('/project/{slug}/frames', [ProjectController::class, 'frames'])->name('project.frames');
@@ -47,6 +48,7 @@ Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
 Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 Route::post('/settings/ffmpeg-detect', [SettingsController::class, 'detectFfmpeg'])->name('settings.ffmpeg-detect');
 Route::get('/settings/ffmpeg-status', [SettingsController::class, 'ffmpegStatus'])->name('settings.ffmpeg-status');
+Route::post('/settings/clear-data', [SettingsController::class, 'clearData'])->name('settings.clear-data');
 
 // NativePHP Dialog endpoints with graceful fallbacks
 Route::get('/api/dialog/open-video', function () {

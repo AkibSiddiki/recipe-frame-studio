@@ -681,4 +681,24 @@ class ProjectController extends Controller
 
         return response()->download($filePath, $filename);
     }
+
+    public function destroy(Request $request, string $slug): RedirectResponse|JsonResponse
+    {
+        $project = $this->projectService->load($slug);
+        $name = $project['name'] ?? $slug;
+        $deleted = $this->projectService->delete($slug);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => $deleted,
+                'message' => $deleted ? "Project '{$name}' deleted successfully." : 'Failed to delete project.',
+            ], $deleted ? 200 : 404);
+        }
+
+        if (! $deleted) {
+            return redirect()->route('home')->with('error', "Project '{$name}' not found or could not be deleted.");
+        }
+
+        return redirect()->route('home')->with('status', "Project '{$name}' was deleted successfully.");
+    }
 }

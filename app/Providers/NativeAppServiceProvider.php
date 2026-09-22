@@ -21,7 +21,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->height(800)
             ->minWidth(1024)
             ->minHeight(700)
-            ->title('Recipe Frame Studio')
+            ->title('Recipe Frame Studio — Rannaghorer Diary')
             ->route('home')
             ->resizable()
             ->hideMenu();

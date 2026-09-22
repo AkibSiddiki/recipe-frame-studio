@@ -115,9 +115,95 @@
             </button>
         </div>
     </form>
+
+    <!-- Danger Zone: Clear App Data -->
+    <div class="mt-12 bg-rose-950/20 rounded-xl border border-rose-900/40 overflow-hidden shadow-sm">
+        <div class="p-6 border-b border-rose-900/30 bg-rose-950/30 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-rose-900/50 border border-rose-700/60 flex items-center justify-center text-rose-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-rose-200">Danger Zone</h2>
+                    <p class="text-xs text-rose-300/70">Irreversible storage operations</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-200">Clear Application Data & Projects</h3>
+                <p class="mt-1 text-xs text-gray-400 max-w-lg">
+                    Permanently delete all saved recipe projects, extracted frame images, generated collages, and temporary files. Your configured FFmpeg executable path will be safely kept.
+                </p>
+            </div>
+            <button type="button" 
+                    onclick="openClearDataModal()" 
+                    class="px-5 py-2.5 bg-rose-900/40 hover:bg-rose-800/60 border border-rose-700 text-rose-200 hover:text-white rounded-lg text-sm font-semibold transition shrink-0 shadow-sm flex items-center justify-center gap-2">
+                <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                <span>Clear All App Data</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Data Confirmation Modal -->
+<div id="clear-data-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-[#1a1a2e] border border-gray-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex items-center space-x-3 mb-4 text-rose-400">
+            <div class="w-10 h-10 rounded-full bg-rose-950/60 border border-rose-800/80 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-white">Clear All App Data?</h3>
+                <p class="text-xs text-gray-400">Permanent data wipe</p>
+            </div>
+        </div>
+        
+        <p class="text-sm text-gray-300 mb-4">
+            This will permanently delete <strong>all local projects</strong>, every extracted frame, step card, and export zip file.
+        </p>
+
+        <div class="bg-gray-900/60 rounded-lg p-3 text-xs text-amber-300/90 border border-amber-800/40 mb-6">
+            ⚠️ Note: Your original video source files on your computer outside the project folder will <strong>not</strong> be touched.
+        </div>
+
+        <form method="POST" action="{{ route('settings.clear-data') }}">
+            @csrf
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeClearDataModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition shadow-md shadow-rose-950/50">
+                    Yes, Clear Everything
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
+    function openClearDataModal() {
+        document.getElementById('clear-data-modal').classList.remove('hidden');
+    }
+
+    function closeClearDataModal() {
+        document.getElementById('clear-data-modal').classList.add('hidden');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeClearDataModal();
+    });
+    document.getElementById('clear-data-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeClearDataModal();
+    });
+
     function browseFfmpeg() {
         fetch('{{ route('api.dialog.open-ffmpeg') }}')
             .then(response => response.json())

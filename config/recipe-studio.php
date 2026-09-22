@@ -64,7 +64,7 @@ return [
         'opacity' => 85,
         'margin' => 30,
         'size' => 18, // percentage of image width
-        'text' => '@RecipeFrameStudio',
+        'text' => '@RannaghorerDiary',
         'color' => '#ffffff',
         'has_shadow' => false,
         'has_pill' => true,

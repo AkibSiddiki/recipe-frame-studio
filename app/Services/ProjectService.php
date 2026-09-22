@@ -67,7 +67,7 @@ class ProjectService
                 'opacity' => 85,
                 'margin' => 30,
                 'size' => 18,
-                'text' => '@RecipeFrameStudio',
+                'text' => '@RannaghorerDiary',
                 'color' => '#ffffff',
                 'has_shadow' => false,
                 'has_pill' => true,
@@ -178,6 +178,25 @@ class ProjectService
         }
 
         return File::deleteDirectory($this->getProjectPath($slug));
+    }
+
+    public function deleteAll(): int
+    {
+        $basePath = $this->getProjectsBasePath();
+        if (! File::exists($basePath)) {
+            return 0;
+        }
+
+        $directories = File::directories($basePath);
+        $count = 0;
+
+        foreach ($directories as $dir) {
+            if (File::deleteDirectory($dir)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     public function extractCandidateFrames(string $slug, ?int $targetCount = 24, ?float $interval = null): array

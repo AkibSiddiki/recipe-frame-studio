@@ -7,6 +7,9 @@
 
     <title>{{ config('app.name', 'Recipe Frame Studio') }}</title>
 
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
@@ -18,9 +21,10 @@
     <!-- Top Navigation Bar -->
     <header class="h-14 bg-[#1a1a2e] border-b border-gray-800 flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
         <div class="flex items-center space-x-3">
-            <a href="{{ route('home') }}" class="flex items-center space-x-2 text-xl font-semibold text-white hover:text-gray-300 transition">
-                <span class="text-2xl">🍳</span>
-                <span>Recipe Frame Studio</span>
+            <a href="{{ route('home') }}" class="flex items-center space-x-3 text-lg font-semibold text-white hover:text-amber-400 transition group">
+                <img src="{{ asset('images/logo.png') }}" class="w-8 h-8 rounded-full border border-amber-500/50 shadow-md group-hover:scale-105 transition object-cover" alt="Rannaghorer Diary">
+                <span class="tracking-tight">Recipe Frame Studio</span>
+                <span class="hidden sm:inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">Rannaghorer Diary</span>
             </a>
         </div>
         <div class="flex items-center space-x-4">
