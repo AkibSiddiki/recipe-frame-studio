@@ -109,15 +109,104 @@
             </div>
         </div>
         
-        <div class="p-6 border-t border-gray-800 bg-gray-900/30 flex justify-between items-center">
-            <span class="text-xs text-gray-500">Source: {{ $video['original_path'] ?? 'Unknown path' }}</span>
-            <button disabled title="Frame extraction will be activated in Phase 3" class="bg-gray-700/60 text-gray-400 px-6 py-2.5 rounded-lg font-medium flex items-center cursor-not-allowed border border-gray-600/50">
-                <span>Auto Extract Frames</span>
-                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                </svg>
-            </button>
+        </div>
+        
+        <div class="p-6 border-t border-gray-800 bg-gray-900/30 flex flex-wrap gap-4 justify-between items-center">
+            <span class="text-xs text-gray-500 truncate max-w-md" title="{{ $video['original_path'] ?? '' }}">Source: {{ $video['original_path'] ?? 'Unknown path' }}</span>
+            
+            <div class="flex items-center gap-3">
+                @if(!empty($project['frames']) && count($project['frames']) > 0)
+                    <a href="{{ route('project.frames', $project['slug']) }}" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-medium text-sm transition border border-gray-700 flex items-center gap-2">
+                        <span>🖼️ View Frames ({{ count($project['frames']) }})</span>
+                    </a>
+                @endif
+
+                <button type="button" onclick="openExtractModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg font-medium text-sm flex items-center transition shadow-md hover:scale-[1.02]">
+                    <span>Auto Extract Frames</span>
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Extraction Modal -->
+<div id="extract-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#1a1a2e] border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <span>⚡</span>
+                <span>Auto Extract Candidate Frames</span>
+            </h3>
+            <button type="button" onclick="closeExtractModal()" class="text-gray-400 hover:text-white text-xl">✕</button>
+        </div>
+
+        <form id="extract-form" action="{{ route('project.extract-frames', $project['slug']) }}" method="POST">
+            @csrf
+            <p class="text-sm text-gray-400 mb-5">
+                FFmpeg will analyze your video and extract high-resolution still frames evenly across the entire duration for your recipe steps.
+            </p>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Target Frame Count</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-700 bg-gray-900/50 cursor-pointer hover:border-amber-500 transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-950/30">
+                            <input type="radio" name="target_count" value="16" class="hidden">
+                            <span class="text-white font-bold text-lg">16</span>
+                            <span class="text-[11px] text-gray-400">Quick Recipe</span>
+                        </label>
+                        <label class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-700 bg-gray-900/50 cursor-pointer hover:border-amber-500 transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-950/30">
+                            <input type="radio" name="target_count" value="24" checked class="hidden">
+                            <span class="text-amber-400 font-bold text-lg">24</span>
+                            <span class="text-[11px] text-gray-400">Recommended</span>
+                        </label>
+                        <label class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-700 bg-gray-900/50 cursor-pointer hover:border-amber-500 transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-950/30">
+                            <input type="radio" name="target_count" value="36" class="hidden">
+                            <span class="text-white font-bold text-lg">36</span>
+                            <span class="text-[11px] text-gray-400">Detailed Steps</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="extract-loading" class="hidden mb-4 p-4 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-300 text-sm flex items-center gap-3">
+                <svg class="animate-spin h-5 w-5 text-amber-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Extracting frames with FFmpeg... This will take just a few seconds.</span>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeExtractModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm transition">
+                    Cancel
+                </button>
+                <button type="submit" id="start-extract-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2">
+                    <span>Start Extraction</span>
+                    <span>→</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openExtractModal() {
+        document.getElementById('extract-modal').classList.remove('hidden');
+    }
+
+    function closeExtractModal() {
+        document.getElementById('extract-modal').classList.add('hidden');
+    }
+
+    document.getElementById('extract-form').addEventListener('submit', function () {
+        document.getElementById('extract-loading').classList.remove('hidden');
+        const btn = document.getElementById('start-extract-btn');
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    });
+</script>
 @endsection

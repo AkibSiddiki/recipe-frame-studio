@@ -61,12 +61,20 @@
                                 $index = array_search($key, $stepKeys);
                                 $isActive = $key === $currentStep;
                                 $isFuture = $index > $currentIndex;
+                                $slug = $project['slug'] ?? null;
+                                $stepUrl = '#';
+                                if ($slug) {
+                                    if ($key === 'video') $stepUrl = route('project.show', $slug);
+                                    elseif ($key === 'frames') $stepUrl = route('project.frames', $slug);
+                                    elseif ($key === 'crop') $stepUrl = route('project.crop', $slug);
+                                    elseif ($key === 'watermark') $stepUrl = route('project.watermark', $slug);
+                                }
                             @endphp
                             <li>
-                                <a href="#" class="flex items-center px-3 py-2 rounded-md transition-colors duration-200 
+                                <a href="{{ $stepUrl !== '#' ? $stepUrl : 'javascript:void(0)' }}" class="flex items-center px-3 py-2 rounded-md transition-colors duration-200 
                                     {{ $isActive ? 'bg-amber-900/30 text-amber-500 border border-amber-800/50' : '' }}
-                                    {{ $isFuture ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:bg-gray-800' }}
-                                    {{ !$isActive && !$isFuture ? 'text-gray-300' : '' }}
+                                    {{ $isFuture && $stepUrl === '#' ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:bg-gray-800' }}
+                                    {{ !$isActive && (!$isFuture || $stepUrl !== '#') ? 'text-gray-300' : '' }}
                                 ">
                                     <span class="mr-3">{{ $step['icon'] }}</span>
                                     <span class="font-medium text-sm">{{ $step['label'] }}</span>

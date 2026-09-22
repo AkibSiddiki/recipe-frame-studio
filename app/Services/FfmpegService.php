@@ -244,6 +244,79 @@ class FfmpegService
         return file_exists($outputPath);
     }
 
+    public function extractFrames(string $videoPath, string $outputPattern, float $interval = 1.0, int $quality = 2): bool
+    {
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+
+        $ffmpegPath = $this->detect();
+        if (! $ffmpegPath) {
+            Log::error('ffmpeg not found for frame extraction.');
+
+            return false;
+        }
+
+        $fpsExpr = 'fps=1/'.max(0.1, $interval);
+
+        $process = Process::timeout(600)->run([
+            $ffmpegPath,
+            '-y',
+            '-threads', '0',
+            '-i', $videoPath,
+            '-vf', $fpsExpr,
+            '-q:v', (string) $quality,
+            $outputPattern,
+        ]);
+
+        if (! $process->successful()) {
+            Log::error('Failed to extract frames', [
+                'error' => $process->errorOutput(),
+                'video' => $videoPath,
+                'pattern' => $outputPattern,
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public function extractFrameAt(string $videoPath, float $timestamp, string $outputPath, int $quality = 2): bool
+    {
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+
+        $ffmpegPath = $this->detect();
+        if (! $ffmpegPath) {
+            Log::error('ffmpeg not found for extracting frame at timestamp.');
+
+            return false;
+        }
+
+        $process = Process::timeout(60)->run([
+            $ffmpegPath,
+            '-y',
+            '-ss', (string) max(0, $timestamp),
+            '-i', $videoPath,
+            '-vframes', '1',
+            '-q:v', (string) $quality,
+            $outputPath,
+        ]);
+
+        if (! $process->successful()) {
+            Log::error('Failed to extract frame at timestamp', [
+                'error' => $process->errorOutput(),
+                'video' => $videoPath,
+                'timestamp' => $timestamp,
+                'output' => $outputPath,
+            ]);
+
+            return false;
+        }
+
+        return file_exists($outputPath);
+    }
+
     private function calculateAspectRatio(int $width, int $height): string
     {
         if ($width === 0 || $height === 0) {
@@ -281,7 +354,7 @@ class FfmpegService
         return $a;
     }
 
-    private function formatDuration(float $seconds): string
+    public function formatDuration(float $seconds): string
     {
         $hours = floor($seconds / 3600);
         $minutes = floor(($seconds % 3600) / 60);

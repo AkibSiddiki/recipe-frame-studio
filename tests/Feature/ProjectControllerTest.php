@@ -1,6 +1,8 @@
 <?php
 
 use App\Services\ProjectService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('create project view renders successfully', function () {
     $response = $this->get('/project/create');
@@ -60,6 +62,26 @@ test('store creates project and redirects to show', function () {
     $response->assertRedirect('/project/sample-recipe');
 
     unlink($tempVideo);
+});
+
+test('store accepts uploaded video file and redirects to show', function () {
+    Storage::fake('local');
+    $file = UploadedFile::fake()->create('cooking-test.mp4', 500, 'video/mp4');
+
+    $mockProjectService = Mockery::mock(ProjectService::class);
+    $mockProjectService->shouldReceive('create')
+        ->once()
+        ->andReturn([
+            'slug' => 'cooking-test',
+            'name' => 'Cooking Test',
+        ]);
+    $this->app->instance(ProjectService::class, $mockProjectService);
+
+    $response = $this->post('/project', [
+        'video_file' => $file,
+    ]);
+
+    $response->assertRedirect('/project/cooking-test');
 });
 
 test('show returns 404 for non-existent project', function () {

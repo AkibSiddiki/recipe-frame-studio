@@ -5,8 +5,6 @@ namespace App\Providers;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Window;
-use Native\Desktop\Menu\Items\Label;
-use Native\Desktop\Menu\Items\Separator;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
 {
@@ -18,21 +16,16 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     {
         Menu::create(
             Menu::app(),
-            Menu::create()
-                ->label('File')
-                ->submenu([
-                    Label::make('New Project')
-                        ->accelerator('CmdOrCtrl+N')
-                        ->url(route('project.create')),
-                    new Separator,
-                    Label::make('Settings')
-                        ->accelerator('CmdOrCtrl+,')
-                        ->url(route('settings')),
-                    new Separator,
-                    Label::make('Quit')
-                        ->accelerator('CmdOrCtrl+Q')
-                        ->quit(),
-                ]),
+            Menu::label('File')
+                ->submenu(
+                    Menu::route('project.create', 'New Project')
+                        ->accelerator('CmdOrCtrl+N'),
+                    Menu::separator(),
+                    Menu::route('settings', 'Settings')
+                        ->accelerator('CmdOrCtrl+,'),
+                    Menu::separator(),
+                    Menu::quit(),
+                ),
             Menu::edit(),
             Menu::view(),
             Menu::window(),
@@ -54,8 +47,10 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     public function phpIni(): array
     {
         return [
-            'memory_limit' => '512M',
-            'max_execution_time' => '300',
+            'memory_limit' => '1024M',
+            'max_execution_time' => '600',
+            'upload_max_filesize' => '2048M',
+            'post_max_size' => '2048M',
         ];
     }
 }

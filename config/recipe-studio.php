@@ -57,10 +57,17 @@ return [
     */
 
     'watermark' => [
+        'enabled' => true,
+        'type' => 'image',
+        'image_path' => 'images/default-watermark.png',
         'position' => 'bottom-right',
-        'opacity' => 70,
+        'opacity' => 85,
         'margin' => 30,
-        'size' => 15, // percentage of image width
+        'size' => 18, // percentage of image width
+        'text' => '@RecipeFrameStudio',
+        'color' => '#ffffff',
+        'has_shadow' => false,
+        'has_pill' => true,
     ],
 
     /*

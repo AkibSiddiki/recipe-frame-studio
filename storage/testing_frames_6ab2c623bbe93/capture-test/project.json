@@ -1,0 +1,27 @@
+{
+    "name": "Cooking Pasta",
+    "slug": "capture-test",
+    "created_at": "2026-09-22T18:17:07+00:00",
+    "updated_at": "2026-09-22T18:17:07+00:00",
+    "video": {
+        "filename": "pasta.mp4",
+        "original_path": "D:\\Laravel Projects\\recipe-frame-studio\\storage\\testing_frames_6ab2c623bbe93\\capture-test\\source\\pasta.mp4",
+        "duration": 60,
+        "formatted_duration": "01:00",
+        "width": 1080,
+        "height": 1920,
+        "fps": 30,
+        "is_vertical": true
+    },
+    "frames": [
+        {
+            "id": "frame_0001",
+            "filename": "frame_0001.jpg",
+            "timestamp": 2.5,
+            "formatted_time": "00:02",
+            "selected": true,
+            "width": 1080,
+            "height": 1920
+        }
+    ]
+}
