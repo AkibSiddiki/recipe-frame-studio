@@ -75,6 +75,15 @@ test('frames view renders successfully for existing project', function () {
         ->assertSee('Step 2: Frames')
         ->assertSee('00:02')
         ->assertSee('frame_0001.jpg');
+
+    $this->get('/project/pasta-recipe')
+        ->assertStatus(200)
+        ->assertSee('Maximum Detail')
+        ->assertSee('value="60"', false);
+
+    $response->assertSee('Minutes')
+        ->assertSee('Seconds')
+        ->assertSee('Milliseconds');
 });
 
 test('extract frames endpoint triggers ffmpeg and updates project json', function () {
@@ -105,6 +114,28 @@ test('extract frames endpoint triggers ffmpeg and updates project json', functio
     $project = app(ProjectService::class)->load('recipe-test');
     expect($project['frames'])->toHaveCount(2)
         ->and($project['frames'][0]['filename'])->toBe('frame_0001.jpg');
+});
+
+test('extract frames endpoint caps the requested count at 60', function () {
+    createDummyProject('max-frames-test');
+
+    $mockFfmpeg = Mockery::mock(FfmpegService::class);
+    $mockFfmpeg->shouldReceive('extractFrames')
+        ->once()
+        ->withArgs(function ($videoPath, $outputPattern, $interval) {
+            return $interval === 1.0;
+        })
+        ->andReturnTrue();
+    $mockFfmpeg->shouldReceive('formatDuration')
+        ->andReturn('00:00');
+
+    $this->app->instance(FfmpegService::class, $mockFfmpeg);
+
+    $response = $this->post('/project/max-frames-test/extract-frames', [
+        'target_count' => 120,
+    ]);
+
+    $response->assertRedirect('/project/max-frames-test/frames');
 });
 
 test('frame image endpoint returns 200 binary response for valid frame', function () {
@@ -177,6 +208,36 @@ test('capture at timestamp extracts frame and adds to project', function () {
 
     $project = app(ProjectService::class)->load('capture-test');
     expect($project['frames'])->toHaveCount(2);
+});
+
+test('capture endpoint combines minute second and millisecond inputs', function () {
+    createDummyProject('precise-capture-test');
+
+    $mockFfmpeg = Mockery::mock(FfmpegService::class);
+    $mockFfmpeg->shouldReceive('extractFrameAt')
+        ->once()
+        ->withArgs(function ($videoPath, $timestamp, $outputPath) {
+            return $timestamp === 62.345;
+        })
+        ->andReturnUsing(function ($videoPath, $timestamp, $outputPath) {
+            File::put($outputPath, 'precise frame image');
+
+            return true;
+        });
+    $mockFfmpeg->shouldReceive('formatDuration')
+        ->with(62.345)
+        ->andReturn('01:02');
+
+    $this->app->instance(FfmpegService::class, $mockFfmpeg);
+
+    $response = $this->postJson('/project/precise-capture-test/frames/capture-at', [
+        'timestamp_minutes' => 1,
+        'timestamp_seconds' => 2,
+        'timestamp_milliseconds' => 345,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('frame.timestamp', 62.35);
 });
 
 test('delete frame endpoint removes frame from disk and project', function () {

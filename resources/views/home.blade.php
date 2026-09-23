@@ -27,7 +27,7 @@
     {{-- Hero Section --}}
     <div class="text-center mb-12 animate-fade-in relative z-10">
         <div class="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/15 mb-6 p-2 shadow-inner relative animate-float">
-            <img src="{{ asset('images/logo.png') }}" class="w-full h-full rounded-full object-cover shadow-lg" alt="Rannaghorer Diary">
+            <img src="{{ asset('images/logo.png') }}" class="w-full h-full rounded-full object-cover shadow-lg" alt="রান্নাঘরের ডায়েরি">
             <div class="absolute inset-0 rounded-2xl animate-glow-pulse pointer-events-none"></div>
         </div>
         <h1 class="text-4xl sm:text-5xl font-display font-extrabold text-white mb-3 tracking-tight">
@@ -35,7 +35,7 @@
         </h1>
         <p class="text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
             Create step-by-step Facebook recipe image cards from your cooking videos for
-            <span class="text-amber-400 font-semibold">রান্নাঘরের Diary</span>.
+            <span class="text-amber-400 font-semibold">রান্নাঘরের ডায়েরি</span>.
         </p>
     </div>
 

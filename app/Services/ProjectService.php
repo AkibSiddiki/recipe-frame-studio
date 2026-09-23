@@ -67,7 +67,7 @@ class ProjectService
                 'opacity' => 85,
                 'margin' => 30,
                 'size' => 18,
-                'text' => '@RannaghorerDiary',
+                'text' => '@রান্নাঘরেরডায়েরি',
                 'color' => '#ffffff',
                 'has_shadow' => false,
                 'has_pill' => true,

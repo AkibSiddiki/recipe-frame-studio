@@ -146,7 +146,7 @@
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2.5">Target Frame Count</label>
-                    <div class="grid grid-cols-3 gap-2.5">
+                    <div class="grid grid-cols-4 gap-2.5">
                         <label class="flex flex-col items-center justify-center p-3.5 rounded-xl border border-border-default bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all has-[:checked]:border-amber-500 has-[:checked]:bg-amber-500/10 has-[:checked]:shadow-lg has-[:checked]:shadow-amber-900/20">
                             <input type="radio" name="target_count" value="16" class="hidden">
                             <span class="text-white font-bold text-lg">16</span>
@@ -161,6 +161,11 @@
                             <input type="radio" name="target_count" value="36" class="hidden">
                             <span class="text-white font-bold text-lg">36</span>
                             <span class="text-[11px] text-gray-400 font-medium">Detailed Steps</span>
+                        </label>
+                        <label class="flex flex-col items-center justify-center p-3.5 rounded-xl border border-border-default bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all has-[:checked]:border-amber-500 has-[:checked]:bg-amber-500/10 has-[:checked]:shadow-lg has-[:checked]:shadow-amber-900/20">
+                            <input type="radio" name="target_count" value="60" class="hidden">
+                            <span class="text-white font-bold text-lg">60</span>
+                            <span class="text-[11px] text-gray-400 font-medium">Maximum Detail</span>
                         </label>
                     </div>
                 </div>

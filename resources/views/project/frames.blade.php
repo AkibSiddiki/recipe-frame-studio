@@ -262,9 +262,18 @@
         </div>
 
         <div class="mb-4">
-            <label for="custom-time-input" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Timestamp (seconds or MM:SS)</label>
-            <input type="text" id="custom-time-input" placeholder="e.g. 14.5 or 01:25" class="block w-full bg-gray-800/80 border-gray-700 rounded-xl text-gray-200 focus:ring-amber-500 focus:border-amber-500 text-sm px-4 py-2.5 font-mono">
-            <p class="text-xs text-gray-500 mt-2">Extract an exact second where a dish or ingredient looks best.</p>
+            <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Timestamp</label>
+            <div class="grid grid-cols-3 gap-2">
+                <input type="number" id="custom-time-minutes" min="0" step="1" value="0" placeholder="Min" aria-label="Minutes" class="block w-full bg-gray-800/80 border-gray-700 rounded-xl text-gray-200 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2.5 font-mono">
+                <input type="number" id="custom-time-seconds" min="0" max="59" step="1" value="0" placeholder="Sec" aria-label="Seconds" class="block w-full bg-gray-800/80 border-gray-700 rounded-xl text-gray-200 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2.5 font-mono">
+                <input type="number" id="custom-time-milliseconds" min="0" max="999" step="1" value="0" placeholder="Ms" aria-label="Milliseconds" class="block w-full bg-gray-800/80 border-gray-700 rounded-xl text-gray-200 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2.5 font-mono">
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-1 text-[10px] text-gray-500 text-center">
+                <span>Minutes</span>
+                <span>Seconds</span>
+                <span>Milliseconds</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Capture one exact frame from the video timeline.</p>
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
@@ -540,35 +549,23 @@
     // --- Custom Timestamp Capture Modal ---
     function openCaptureModal() {
         document.getElementById('capture-modal').classList.remove('hidden');
-        document.getElementById('custom-time-input').focus();
+        document.getElementById('custom-time-minutes').focus();
     }
 
     function closeCaptureModal() {
         document.getElementById('capture-modal').classList.add('hidden');
-        document.getElementById('custom-time-input').value = '';
+        document.getElementById('custom-time-minutes').value = '0';
+        document.getElementById('custom-time-seconds').value = '0';
+        document.getElementById('custom-time-milliseconds').value = '0';
     }
 
     function submitCustomCapture() {
-        const input = document.getElementById('custom-time-input').value.trim();
-        if (!input) {
-            alert('Please enter a timestamp in seconds or MM:SS format.');
-            return;
-        }
+        const minutes = Number(document.getElementById('custom-time-minutes').value);
+        const secondsPart = Number(document.getElementById('custom-time-seconds').value);
+        const milliseconds = Number(document.getElementById('custom-time-milliseconds').value);
 
-        let seconds = 0;
-        if (input.includes(':')) {
-            const parts = input.split(':').map(Number);
-            if (parts.length === 2) {
-                seconds = (parts[0] * 60) + parts[1];
-            } else if (parts.length === 3) {
-                seconds = (parts[0] * 3600) + (parts[1] * 60) + parts[2];
-            }
-        } else {
-            seconds = parseFloat(input);
-        }
-
-        if (isNaN(seconds) || seconds < 0) {
-            alert('Invalid timestamp.');
+        if (!Number.isInteger(minutes) || minutes < 0 || !Number.isInteger(secondsPart) || secondsPart < 0 || secondsPart > 59 || !Number.isInteger(milliseconds) || milliseconds < 0 || milliseconds > 999) {
+            alert('Enter valid minutes, seconds (0-59), and milliseconds (0-999).');
             return;
         }
 
@@ -583,7 +580,11 @@
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ timestamp: seconds })
+            body: JSON.stringify({
+                timestamp_minutes: minutes,
+                timestamp_seconds: secondsPart,
+                timestamp_milliseconds: milliseconds,
+            })
         })
         .then(res => res.json())
         .then(data => {
@@ -602,6 +603,15 @@
             alert('Error capturing frame: ' + err.message);
         });
     }
+
+    document.querySelectorAll('#capture-modal input').forEach(input => {
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitCustomCapture();
+            }
+        });
+    });
 
     function goToCropStep() {
         const selectedCount = document.querySelectorAll('.frame-card[data-selected="true"]').length;

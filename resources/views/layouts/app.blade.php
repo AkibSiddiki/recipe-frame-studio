@@ -26,11 +26,11 @@
         <div class="flex items-center gap-3">
             <a href="{{ route('home') }}" class="flex items-center gap-3 text-lg font-semibold text-white hover:text-amber-400 transition-all duration-300 group">
                 <div class="relative">
-                    <img src="{{ asset('images/logo.png') }}" class="w-8 h-8 rounded-full border border-amber-500/40 shadow-md group-hover:scale-110 transition-transform duration-300 object-cover" alt="Rannaghorer Diary">
+                    <img src="{{ asset('images/logo.png') }}" class="w-8 h-8 rounded-full border border-amber-500/40 shadow-md group-hover:scale-110 transition-transform duration-300 object-cover" alt="রান্নাঘরের ডায়েরি">
                     <div class="absolute inset-0 rounded-full bg-amber-500/0 group-hover:bg-amber-500/10 transition-colors duration-300"></div>
                 </div>
                 <span class="font-display font-bold tracking-tight">Recipe Frame Studio</span>
-                <span class="hidden sm:inline-block text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 backdrop-blur-sm">রান্নাঘরের Diary</span>
+                    <span class="hidden sm:inline-block text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 backdrop-blur-sm">রান্নাঘরের ডায়েরি</span>
             </a>
         </div>
         <div class="flex items-center gap-3">

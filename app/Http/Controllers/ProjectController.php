@@ -149,7 +149,7 @@ class ProjectController extends Controller
             abort(404, 'Project not found.');
         }
 
-        $targetCount = $request->filled('target_count') ? (int) $request->input('target_count') : 24;
+        $targetCount = $request->filled('target_count') ? min(60, max(1, (int) $request->input('target_count'))) : 24;
         $interval = $request->filled('interval') ? (float) $request->input('interval') : null;
 
         try {
@@ -221,7 +221,20 @@ class ProjectController extends Controller
         @set_time_limit(0);
         @ini_set('max_execution_time', '0');
 
-        $timestamp = (float) $request->input('timestamp', 0);
+        $validated = $request->validate([
+            'timestamp' => ['nullable', 'numeric', 'min:0'],
+            'timestamp_minutes' => ['nullable', 'integer', 'min:0'],
+            'timestamp_seconds' => ['nullable', 'integer', 'between:0,59'],
+            'timestamp_milliseconds' => ['nullable', 'integer', 'between:0,999'],
+        ]);
+
+        $timestamp = (float) ($validated['timestamp'] ?? 0);
+        if ($request->filled('timestamp_minutes') || $request->filled('timestamp_seconds') || $request->filled('timestamp_milliseconds')) {
+            $timestamp = ((int) ($validated['timestamp_minutes'] ?? 0) * 60)
+                + (int) ($validated['timestamp_seconds'] ?? 0)
+                + ((int) ($validated['timestamp_milliseconds'] ?? 0) / 1000);
+        }
+
         $newFrame = $this->projectService->captureFrameAtTimestamp($slug, $timestamp);
 
         if (! $newFrame) {
