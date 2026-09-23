@@ -116,6 +116,12 @@
                     <span id="active-frame-time" class="text-gray-300 font-mono">00:00</span>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button type="button" id="prev-frame-btn" onclick="navigateFrame(-1)" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition disabled:opacity-40 disabled:cursor-not-allowed" title="Previous frame (Alt + Left Arrow)" aria-label="Previous frame">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button type="button" id="next-frame-btn" onclick="navigateFrame(1)" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition disabled:opacity-40 disabled:cursor-not-allowed" title="Next frame (Alt + Right Arrow)" aria-label="Next frame">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5l7 7-7 7z"></path></svg>
+                    </button>
                     <span class="font-mono text-[11px] bg-surface-base px-2.5 py-1 rounded-lg border border-gray-800 text-gray-300 font-semibold" id="crop-coords-label">
                         X: 0, Y: 0 | 0 × 0 px
                     </span>
@@ -174,6 +180,10 @@
                         Fit Max
                     </button>
                 </div>
+            </div>
+            <div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-gray-400 leading-relaxed">
+                <span class="font-semibold text-amber-400">Keyboard shortcuts:</span>
+                <span>Arrow keys move the crop area · Shift + Arrow moves faster · Alt + Left/Right switches frames</span>
             </div>
         </div>
 
@@ -346,6 +356,28 @@
         const imageUrl = `{{ url('/project') }}/${projectSlug}/frame-image/${frame.filename}`;
         imageEl.style.opacity = '0.3';
         imageEl.src = imageUrl;
+        updateFrameNavigationButtons();
+    }
+
+    function navigateFrame(direction) {
+        if (!activeFrameId || frames.length < 2) return;
+
+        const currentIndex = frames.findIndex(frame => (frame.id || frame.filename) === activeFrameId);
+        if (currentIndex === -1) return;
+
+        const nextIndex = currentIndex + direction;
+        if (nextIndex < 0 || nextIndex >= frames.length) return;
+
+        selectActiveFrame(frames[nextIndex].id || frames[nextIndex].filename);
+    }
+
+    function updateFrameNavigationButtons() {
+        const currentIndex = frames.findIndex(frame => (frame.id || frame.filename) === activeFrameId);
+        const previousButton = document.getElementById('prev-frame-btn');
+        const nextButton = document.getElementById('next-frame-btn');
+
+        if (previousButton) previousButton.disabled = currentIndex <= 0;
+        if (nextButton) nextButton.disabled = currentIndex === -1 || currentIndex >= frames.length - 1;
     }
 
     function onImageLoaded() {
@@ -534,6 +566,22 @@
             `X: ${naturalCoords.x}, Y: ${naturalCoords.y} | ${naturalCoords.width} × ${naturalCoords.height} px`;
     }
 
+    function moveCropBoxByKeyboard(dx, dy) {
+        if (!activeFrameId || !imgDisplay.width || !imgDisplay.height) return;
+
+        const minX = imgDisplay.x;
+        const maxX = imgDisplay.x + imgDisplay.width - cropBoxDisplay.width;
+        const minY = imgDisplay.y;
+        const maxY = imgDisplay.y + imgDisplay.height - cropBoxDisplay.height;
+
+        cropBoxDisplay.x = Math.max(minX, Math.min(maxX, cropBoxDisplay.x + dx));
+        cropBoxDisplay.y = Math.max(minY, Math.min(maxY, cropBoxDisplay.y + dy));
+
+        renderCropBoxDOM();
+        updatePreview();
+        recordActiveFrameCrop();
+    }
+
     function updatePreview() {
         if (!imageEl.complete || imageEl.naturalWidth === 0) return;
 
@@ -639,6 +687,36 @@
             }
         });
     }
+
+    window.addEventListener('keydown', (event) => {
+        if (event.target.matches('input, textarea, select')) return;
+
+        if (event.altKey && event.key === 'ArrowLeft') {
+            event.preventDefault();
+            navigateFrame(-1);
+            return;
+        }
+
+        if (event.altKey && event.key === 'ArrowRight') {
+            event.preventDefault();
+            navigateFrame(1);
+            return;
+        }
+
+        const movement = event.shiftKey ? 10 : 2;
+        const movements = {
+            ArrowLeft: [-movement, 0],
+            ArrowRight: [movement, 0],
+            ArrowUp: [0, -movement],
+            ArrowDown: [0, movement],
+        };
+        const [dx, dy] = movements[event.key] || [];
+
+        if (dx === undefined || dy === undefined) return;
+
+        event.preventDefault();
+        moveCropBoxByKeyboard(dx, dy);
+    });
 
     function handleResizeDrag(e) {
         const dx = e.clientX - startPointer.x;

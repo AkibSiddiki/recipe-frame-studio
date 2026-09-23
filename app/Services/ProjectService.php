@@ -1412,13 +1412,14 @@ class ProjectService
         $selectedFrames = $this->getSelectedFrames($slug);
         $recipeSteps = $this->getRecipeSteps($slug);
         $items = $recipeSteps['items'] ?? [];
+        $hasEnabledStepItems = collect($items)->contains(fn ($item) => ! empty($item['enabled']));
 
         $stepFramePaths = [];
         foreach ($selectedFrames as $index => $frame) {
             $fId = $frame['filename'] ?? ($frame['id'] ?? '');
             $stepItem = collect($items)->first(fn ($it) => ($it['frame_id'] ?? '') === $fId || ($it['filename'] ?? '') === $fId);
 
-            if ($stepItem && empty($stepItem['enabled'])) {
+            if ($hasEnabledStepItems && $stepItem && empty($stepItem['enabled'])) {
                 continue;
             }
 
@@ -1443,6 +1444,8 @@ class ProjectService
             return false;
         }
 
+        @ini_set('memory_limit', '512M');
+
         $firstInfo = @getimagesize($stepFramePaths[0]);
         if (! $firstInfo) {
             return false;
@@ -1452,10 +1455,13 @@ class ProjectService
         $origCellH = $firstInfo[1];
 
         $scale = max(1, min(2, (int) ($config['scale'] ?? 1)));
+        $N = count($stepFramePaths);
         $baseCellW = (int) round(540 * $scale);
+        if ($N > 16) {
+            $baseCellW = min($baseCellW, 360);
+        }
         $baseCellH = (int) round($baseCellW * ($origCellH / $origCellW));
 
-        $N = count($stepFramePaths);
         $layout = $config['layout'] ?? 'auto-grid';
 
         if ($layout === 'grid-2x2') {

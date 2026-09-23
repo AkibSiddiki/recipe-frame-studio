@@ -88,6 +88,9 @@ test('it renders the crop studio page when frames exist', function () {
     $response->assertSee('1:1 Square', false);
     $response->assertSee('16:9 Landscape', false);
     $response->assertSee('Apply to All Frames', false);
+    $response->assertSee('Previous frame (Alt + Left Arrow)', false);
+    $response->assertSee('Next frame (Alt + Right Arrow)', false);
+    $response->assertSee('Arrow keys move the crop area', false);
     $response->assertSee('frame_0001.jpg', false);
 });
 
