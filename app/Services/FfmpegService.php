@@ -20,6 +20,8 @@ class FfmpegService
             'C:\ffmpeg\bin\ffmpeg.exe',
             'C:\Program Files\FFmpeg\bin\ffmpeg.exe',
             'C:\Program Files (x86)\FFmpeg\bin\ffmpeg.exe',
+            '/opt/homebrew/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
         ];
 
         foreach ($commonPaths as $commonPath) {
@@ -28,7 +30,8 @@ class FfmpegService
             }
         }
 
-        $process = Process::run('where ffmpeg');
+        $command = PHP_OS_FAMILY === 'Windows' ? 'where ffmpeg' : 'command -v ffmpeg';
+        $process = Process::run($command);
         if ($process->successful()) {
             $output = trim($process->output());
             $paths = explode(PHP_EOL, $output);
