@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 
 class ProjectService
 {
@@ -836,13 +837,11 @@ class ProjectService
             $text = trim((string) ($config['text'] ?? '@RecipeFrameStudio'));
             if ($text !== '') {
                 $fontSize = max(14, (int) round($canvasW * ($sizePercent / 100) * 0.25));
-                $fontFile = 'C:/Windows/Fonts/arial.ttf';
-                $useTtf = function_exists('imagettftext') && file_exists($fontFile);
+                $fontFile = $this->resolveTtfFont(false);
+                $useTtf = function_exists('imagettftext') && $fontFile !== null;
 
                 if ($useTtf) {
-                    $bbox = imagettfbbox($fontSize, 0, $fontFile, $text);
-                    $textW = abs($bbox[4] - $bbox[0]);
-                    $textH = abs($bbox[5] - $bbox[1]);
+                    [$textW, $textH] = $this->measureText($fontSize, $fontFile, $text);
                 } else {
                     $fontIndex = 5;
                     $textW = strlen($text) * imagefontwidth($fontIndex);
@@ -876,14 +875,8 @@ class ProjectService
                     $textX = $boxX + $padX;
                     $textY = $boxY + $padY + $textH;
 
-                    // Drop shadow
-                    if (! empty($config['has_shadow'])) {
-                        $shadowColor = imagecolorallocatealpha($srcImg, 0, 0, 0, min(127, $textAlpha + 20));
-                        imagettftext($srcImg, $fontSize, 0, $textX + 2, $textY + 2, $shadowColor, $fontFile, $text);
-                    }
-
                     $textColor = imagecolorallocatealpha($srcImg, $r, $g, $b, $textAlpha);
-                    imagettftext($srcImg, $fontSize, 0, $textX, $textY, $textColor, $fontFile, $text);
+                    $this->renderTextWithDropShadow($srcImg, $fontSize, 0, $textX, $textY, $textColor, $fontFile, $text, ! empty($config['has_shadow']), $canvasW / 1080);
                 } else {
                     $textX = $boxX + $padX;
                     $textY = $boxY + $padY;
@@ -933,6 +926,141 @@ class ProjectService
         ];
     }
 
+    public function resolveTtfFont(bool $bold = false): ?string
+    {
+        $publicFont = public_path('Li Alinur Mayaboti Unicode.ttf');
+        $publicItalic = public_path('Li Alinur Mayaboti Unicode Italic.ttf');
+        $folderFont = public_path('fonts/AlinurMayaboti/Unicode/Li Alinur Mayaboti Unicode.ttf');
+        $folderItalic = public_path('fonts/AlinurMayaboti/Unicode/Li Alinur Mayaboti Unicode Italic.ttf');
+
+        $candidates = $bold ? [
+            $publicFont,
+            $folderFont,
+            '/System/Library/Fonts/KohinoorBangla.ttc',
+            '/System/Library/Fonts/Supplemental/Bangla Sangam MN.ttc',
+            '/System/Library/Fonts/Supplemental/Bangla MN.ttc',
+            '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+            '/System/Library/Fonts/Supplemental/Arial.ttf',
+            '/Library/Fonts/Arial Bold.ttf',
+            '/System/Library/Fonts/HelveticaNeue.ttc',
+            'C:/Windows/Fonts/kalpurush.ttf',
+            'C:/Windows/Fonts/Siyamrupali.ttf',
+            'C:/Windows/Fonts/Vrinda.ttf',
+            'C:/Windows/Fonts/arialbd.ttf',
+            'C:/Windows/Fonts/arial.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansBengali-Bold.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansBengali-Regular.ttf',
+            '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        ] : [
+            $publicFont,
+            $folderFont,
+            $publicItalic,
+            $folderItalic,
+            '/System/Library/Fonts/KohinoorBangla.ttc',
+            '/System/Library/Fonts/Supplemental/Bangla Sangam MN.ttc',
+            '/System/Library/Fonts/Supplemental/Bangla MN.ttc',
+            '/System/Library/Fonts/Supplemental/Arial.ttf',
+            '/Library/Fonts/Arial.ttf',
+            '/System/Library/Fonts/HelveticaNeue.ttc',
+            'C:/Windows/Fonts/kalpurush.ttf',
+            'C:/Windows/Fonts/Siyamrupali.ttf',
+            'C:/Windows/Fonts/Vrinda.ttf',
+            'C:/Windows/Fonts/arial.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansBengali-Regular.ttf',
+            '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        ];
+
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Locate the HarfBuzz (hb-view) binary for complex OpenType Indic/Bengali script shaping.
+     */
+    public function getHbViewBinary(): ?string
+    {
+        $custom = config('recipe-studio.hb_view_path', env('HB_VIEW_PATH'));
+        if ($custom && is_executable($custom)) {
+            return $custom;
+        }
+
+        $candidates = [
+            '/opt/homebrew/bin/hb-view',
+            '/usr/local/bin/hb-view',
+            '/usr/bin/hb-view',
+        ];
+
+        foreach ($candidates as $bin) {
+            if (is_executable($bin)) {
+                return $bin;
+            }
+        }
+
+        $which = trim((string) @shell_exec('which hb-view 2>/dev/null'));
+        if ($which !== '' && is_executable($which)) {
+            return $which;
+        }
+
+        return null;
+    }
+
+    /**
+     * Accurately measure rendered text dimensions supporting HarfBuzz OpenType script shaping.
+     *
+     * @return array{0: int, 1: int} [width, height]
+     */
+    public function measureText(int $size, ?string $fontFile, string $text): array
+    {
+        if ($text === '') {
+            return [0, 0];
+        }
+
+        $hbView = $this->getHbViewBinary();
+        if ($hbView && $fontFile && file_exists($fontFile)) {
+            try {
+                $process = new Process([
+                    $hbView,
+                    "--font-size={$size}",
+                    '--background=none',
+                    '--margin=0',
+                    '-o',
+                    '-',
+                    $fontFile,
+                    $text,
+                ]);
+                $process->setTimeout(3);
+                $process->run();
+                if ($process->isSuccessful()) {
+                    $img = @imagecreatefromstring($process->getOutput());
+                    if ($img) {
+                        $w = imagesx($img);
+                        $h = imagesy($img);
+                        imagedestroy($img);
+
+                        return [$w, $h];
+                    }
+                }
+            } catch (\Throwable) {
+                // Fallback to imagettfbbox below
+            }
+        }
+
+        if (function_exists('imagettfbbox') && $fontFile && file_exists($fontFile)) {
+            $bbox = imagettfbbox($size, 0, $fontFile, $text);
+
+            return [abs($bbox[2] - $bbox[0]), abs($bbox[5] - $bbox[1])];
+        }
+
+        return [strlen($text) * imagefontwidth(5), imagefontheight(5)];
+    }
+
     private function imagecopymergeAlpha($dst_im, $src_im, $dst_x, $dst_y, $src_x, $src_y, $src_w, $src_h, $pct): void
     {
         $cut = imagecreatetruecolor($src_w, $src_h);
@@ -951,7 +1079,7 @@ class ProjectService
 
         $selectedFrames = $this->getSelectedFrames($slug);
         $savedSteps = is_array($project['steps'] ?? null) ? $project['steps'] : [];
-        $style = $savedSteps['style'] ?? [
+        $defaultStyle = [
             'layout' => 'bottom-banner',
             'size' => 'medium',
             'bg_color' => '#0f172a',
@@ -959,7 +1087,10 @@ class ProjectService
             'text_color' => '#ffffff',
             'badge_color' => '#f59e0b',
             'has_shadow' => true,
+            'title_padding' => 30,
+            'text_align' => 'left',
         ];
+        $style = array_merge($defaultStyle, $savedSteps['style'] ?? []);
 
         $savedItems = is_array($savedSteps['items'] ?? null) ? $savedSteps['items'] : [];
         $itemsByFrame = [];
@@ -985,6 +1116,8 @@ class ProjectService
                 'description' => $existing['description'] ?? '',
                 'ingredients' => $existing['ingredients'] ?? '',
                 'enabled' => isset($existing['enabled']) ? (bool) $existing['enabled'] : true,
+                'padding' => isset($existing['padding']) && is_numeric($existing['padding']) ? (int) $existing['padding'] : null,
+                'text_align' => $existing['text_align'] ?? null,
             ];
         }
 
@@ -1013,6 +1146,8 @@ class ProjectService
             'text_color' => '#ffffff',
             'badge_color' => '#f59e0b',
             'has_shadow' => true,
+            'title_padding' => 30,
+            'text_align' => 'left',
         ];
 
         $style = array_merge(
@@ -1031,6 +1166,10 @@ class ProjectService
 
         $project['steps'] = $stepsData;
         $project['recipe_steps'] = $stepsData;
+
+        if (! empty($data['recipe_name'])) {
+            $project['name'] = trim((string) $data['recipe_name']);
+        }
 
         $project['updated_at'] = date('c');
         $this->save($slug, $project);
@@ -1105,7 +1244,8 @@ class ProjectService
 
         $layout = $style['layout'] ?? 'bottom-banner';
         $size = $style['size'] ?? 'medium';
-        $opacity = max(10, min(100, (int) ($style['bg_opacity'] ?? 85)));
+        $opacity = max(0, min(100, (int) ($style['bg_opacity'] ?? 85)));
+        $textAlign = $step['text_align'] ?? ($style['text_align'] ?? 'left');
         $bgColorHex = $style['bg_color'] ?? '#0f172a';
         $textColorHex = $style['text_color'] ?? '#ffffff';
         $badgeColorHex = $style['badge_color'] ?? '#f59e0b';
@@ -1115,12 +1255,9 @@ class ProjectService
         [$textR, $textG, $textB] = $this->hexToRgb($textColorHex);
         [$badgeR, $badgeG, $badgeB] = $this->hexToRgb($badgeColorHex);
 
-        $fontFile = 'C:/Windows/Fonts/arial.ttf';
-        $fontBold = 'C:/Windows/Fonts/arialbd.ttf';
-        if (! file_exists($fontBold)) {
-            $fontBold = $fontFile;
-        }
-        $useTtf = function_exists('imagettftext') && file_exists($fontFile);
+        $fontFile = $this->resolveTtfFont(false);
+        $fontBold = $this->resolveTtfFont(true) ?: $fontFile;
+        $useTtf = function_exists('imagettftext') && $fontFile !== null;
 
         $scaleFactor = match ($size) {
             'small' => 0.85,
@@ -1137,6 +1274,12 @@ class ProjectService
         $titleText = trim((string) ($step['title'] ?? ''));
         $descText = trim((string) ($step['description'] ?? ''));
 
+        $rawPadding = isset($step['padding']) && is_numeric($step['padding'])
+            ? (int) $step['padding']
+            : (int) ($style['title_padding'] ?? 30);
+        $titlePadding = max(8, min(150, $rawPadding));
+        $pad = (int) round($titlePadding * ($canvasW / 1080));
+
         imagealphablending($srcImg, true);
 
         $bgAlpha = (int) round(127 - (127 * ($opacity / 100)));
@@ -1147,8 +1290,12 @@ class ProjectService
         if ($layout === 'badge-only') {
             $badgeW = (int) round($baseBadgeSize * 3.5);
             $badgeH = (int) round($baseBadgeSize * 2.2);
-            $badgeX = (int) round($canvasW * 0.05);
-            $badgeY = (int) round($canvasH * 0.05);
+            $badgeX = match ($textAlign) {
+                'center' => (int) round(($canvasW - $badgeW) / 2),
+                'right' => max($pad, $canvasW - $pad - $badgeW),
+                default => $pad,
+            };
+            $badgeY = $pad;
 
             $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
             imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
@@ -1160,82 +1307,132 @@ class ProjectService
                 imagestring($srcImg, 5, $badgeX + 10, $badgeY + 8, $badgeText, $badgeTextColor);
             }
         } elseif ($layout === 'top-banner') {
-            $bannerH = (int) round($canvasH * 0.18 * $scaleFactor);
-            imagefilledrectangle($srcImg, 0, 0, $canvasW, $bannerH, $bgColor);
+            $bannerH = max((int) round($canvasH * 0.18 * $scaleFactor), $pad * 2 + (int) round($baseBadgeSize * 2.2));
+            if ($opacity > 0) {
+                imagefilledrectangle($srcImg, 0, 0, $canvasW, $bannerH, $bgColor);
+            }
 
             $badgeW = (int) round($baseBadgeSize * 3.5);
             $badgeH = (int) round($baseBadgeSize * 2.0);
-            $badgeX = (int) round($canvasW * 0.04);
-            $badgeY = (int) round(($bannerH - $badgeH) / 2);
+            $gap = (int) round($canvasW * 0.025);
+            $showBadge = ! empty($style['show_badge'] ?? true);
 
-            $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
-            imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
-            $badgeTextColor = imagecolorallocate($srcImg, 15, 23, 42);
-
-            if ($useTtf) {
-                imagettftext($srcImg, $baseBadgeSize, 0, $badgeX + (int) round($badgeW * 0.18), $badgeY + (int) round($badgeH * 0.72), $badgeTextColor, $fontBold, $badgeText);
+            if ($titleText !== '') {
+                if ($useTtf) {
+                    [$titleW] = $this->measureText($baseTitleSize, $fontBold, $titleText);
+                } else {
+                    $titleW = imagefontwidth(5) * strlen($titleText);
+                }
+            } else {
+                $titleW = 0;
             }
 
-            $textX = $badgeX + $badgeW + (int) round($canvasW * 0.03);
-            if ($titleText !== '') {
-                $titleY = (int) round($bannerH * 0.45);
+            $totalHeaderW = ($showBadge ? ($badgeW + $gap) : 0) + $titleW;
+
+            if ($textAlign === 'center') {
+                $startX = max($pad, (int) round(($canvasW - $totalHeaderW) / 2));
+            } elseif ($textAlign === 'right') {
+                $startX = max($pad, $canvasW - $pad - $totalHeaderW);
+            } else {
+                $startX = $pad;
+            }
+
+            $badgeY = (int) round(($bannerH - $badgeH) / 2);
+
+            if ($showBadge) {
+                $badgeX = $startX;
+                $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
+                imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
+                $badgeTextColor = imagecolorallocate($srcImg, 15, 23, 42);
+
                 if ($useTtf) {
-                    if ($hasShadow) {
-                        imagettftext($srcImg, $baseTitleSize, 0, $textX + 2, $titleY + 2, $shadowColor, $fontBold, $titleText);
-                    }
-                    imagettftext($srcImg, $baseTitleSize, 0, $textX, $titleY, $textColor, $fontBold, $titleText);
+                    imagettftext($srcImg, $baseBadgeSize, 0, $badgeX + (int) round($badgeW * 0.18), $badgeY + (int) round($badgeH * 0.72), $badgeTextColor, $fontBold, $badgeText);
                 } else {
-                    imagestring($srcImg, 5, $textX, $titleY - 15, $titleText, $textColor);
+                    imagestring($srcImg, 5, $badgeX + 10, $badgeY + 8, $badgeText, $badgeTextColor);
                 }
+                $textX = $badgeX + $badgeW + $gap;
+            } else {
+                $textX = $startX;
+            }
+
+            $maxW = $canvasW - $textX - $pad;
+            if ($titleText !== '') {
+                $titleY = $descText !== '' ? (int) round($bannerH * 0.45) : (int) round($bannerH * 0.58);
+                $titleLines = $useTtf ? $this->wrapText($baseTitleSize, $fontBold, $titleText, $maxW) : [$titleText];
+                $firstTitle = $titleLines[0] ?? $titleText;
+                $this->renderTextWithDropShadow($srcImg, $baseTitleSize, 0, $textX, $titleY, $textColor, $fontBold, $firstTitle, $hasShadow, $canvasW / 1080);
             }
             if ($descText !== '') {
                 $descY = (int) round($bannerH * 0.8);
-                $maxW = $canvasW - $textX - (int) round($canvasW * 0.04);
-                $lines = $this->wrapText($baseDescSize, $fontFile, $descText, $maxW);
+                $lines = $this->wrapText($baseDescSize, $fontFile, $descText, $canvasW - ($pad * 2));
                 if (! empty($lines[0])) {
                     if ($useTtf) {
-                        imagettftext($srcImg, $baseDescSize, 0, $textX, $descY, $textColor, $fontFile, $lines[0]);
+                        [$descW] = $this->measureText($baseDescSize, $fontFile, $lines[0]);
+                        $descX = $textAlign === 'center' ? max($pad, (int) round(($canvasW - $descW) / 2)) : $textX;
+                        $this->renderTextWithDropShadow($srcImg, $baseDescSize, 0, $descX, $descY, $textColor, $fontFile, $lines[0], $hasShadow, $canvasW / 1080);
                     } else {
                         imagestring($srcImg, 3, $textX, $descY - 10, $lines[0], $textColor);
                     }
                 }
             }
         } elseif ($layout === 'lower-third') {
-            $cardW = (int) round($canvasW * 0.92);
+            $cardW = $canvasW - ($pad * 2);
             $cardH = (int) round($canvasH * 0.22 * $scaleFactor);
-            $cardX = (int) round(($canvasW - $cardW) / 2);
+            $cardX = $pad;
             $cardY = $canvasH - $cardH - (int) round($canvasH * 0.04);
 
-            imagefilledrectangle($srcImg, $cardX, $cardY, $cardX + $cardW, $cardY + $cardH, $bgColor);
+            if ($opacity > 0) {
+                imagefilledrectangle($srcImg, $cardX, $cardY, $cardX + $cardW, $cardY + $cardH, $bgColor);
+            }
 
             $badgeW = (int) round($baseBadgeSize * 3.6);
             $badgeH = (int) round($baseBadgeSize * 2.0);
-            $badgeX = $cardX + (int) round($cardW * 0.04);
-            $badgeY = $cardY + (int) round($cardH * 0.16);
+            $gap = (int) round($cardW * 0.03);
+            $showBadge = ! empty($style['show_badge'] ?? true);
 
-            $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
-            imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
-            $badgeTextColor = imagecolorallocate($srcImg, 15, 23, 42);
-
-            if ($useTtf) {
-                imagettftext($srcImg, $baseBadgeSize, 0, $badgeX + (int) round($badgeW * 0.18), $badgeY + (int) round($badgeH * 0.72), $badgeTextColor, $fontBold, $badgeText);
-            }
-
-            $titleX = $badgeX + $badgeW + (int) round($cardW * 0.03);
-            $titleY = $badgeY + (int) round($badgeH * 0.78);
             if ($titleText !== '') {
                 if ($useTtf) {
-                    if ($hasShadow) {
-                        imagettftext($srcImg, $baseTitleSize, 0, $titleX + 2, $titleY + 2, $shadowColor, $fontBold, $titleText);
-                    }
-                    imagettftext($srcImg, $baseTitleSize, 0, $titleX, $titleY, $textColor, $fontBold, $titleText);
+                    [$titleW] = $this->measureText($baseTitleSize, $fontBold, $titleText);
                 } else {
-                    imagestring($srcImg, 5, $titleX, $titleY - 15, $titleText, $textColor);
+                    $titleW = imagefontwidth(5) * strlen($titleText);
                 }
+            } else {
+                $titleW = 0;
+            }
+
+            $totalHeaderW = ($showBadge ? ($badgeW + $gap) : 0) + $titleW;
+
+            if ($textAlign === 'center') {
+                $startX = max($cardX + (int) round($cardW * 0.04), (int) round($cardX + ($cardW - $totalHeaderW) / 2));
+            } elseif ($textAlign === 'right') {
+                $startX = max($cardX + (int) round($cardW * 0.04), $cardX + $cardW - (int) round($cardW * 0.04) - $totalHeaderW);
+            } else {
+                $startX = $cardX + (int) round($cardW * 0.04);
+            }
+
+            $badgeY = $cardY + (int) round($cardH * 0.16);
+
+            if ($showBadge) {
+                $badgeX = $startX;
+                $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
+                imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
+                $badgeTextColor = imagecolorallocate($srcImg, 15, 23, 42);
+
+                if ($useTtf) {
+                    imagettftext($srcImg, $baseBadgeSize, 0, $badgeX + (int) round($badgeW * 0.18), $badgeY + (int) round($badgeH * 0.72), $badgeTextColor, $fontBold, $badgeText);
+                }
+
+                $titleX = $badgeX + $badgeW + $gap;
+            } else {
+                $titleX = $startX;
+            }
+
+            $titleY = $badgeY + (int) round($badgeH * 0.78);
+            if ($titleText !== '') {
+                $this->renderTextWithDropShadow($srcImg, $baseTitleSize, 0, $titleX, $titleY, $textColor, $fontBold, $titleText, $hasShadow, $canvasW / 1080);
             }
 
             if ($descText !== '') {
-                $descX = $badgeX;
                 $descY = $badgeY + $badgeH + (int) round($baseDescSize * 1.6);
                 $maxW = $cardW - (int) round($cardW * 0.08);
                 $lines = $this->wrapText($baseDescSize, $fontFile, $descText, $maxW);
@@ -1244,9 +1441,11 @@ class ProjectService
                 foreach (array_slice($lines, 0, 2) as $lIndex => $line) {
                     $yPos = $descY + ($lIndex * $lineH);
                     if ($useTtf) {
-                        imagettftext($srcImg, $baseDescSize, 0, $descX, $yPos, $textColor, $fontFile, $line);
+                        [$descW] = $this->measureText($baseDescSize, $fontFile, $line);
+                        $descX = $textAlign === 'center' ? max($cardX + $pad, (int) round($cardX + ($cardW - $descW) / 2)) : ($cardX + (int) round($cardW * 0.04));
+                        $this->renderTextWithDropShadow($srcImg, $baseDescSize, 0, $descX, $yPos, $textColor, $fontFile, $line, $hasShadow, $canvasW / 1080);
                     } else {
-                        imagestring($srcImg, 3, $descX, $yPos - 10, $line, $textColor);
+                        imagestring($srcImg, 3, $cardX + (int) round($cardW * 0.04), $yPos - 10, $line, $textColor);
                     }
                 }
             }
@@ -1254,47 +1453,71 @@ class ProjectService
             $bannerH = (int) round($canvasH * 0.22 * $scaleFactor);
             $bannerY = $canvasH - $bannerH;
 
-            imagefilledrectangle($srcImg, 0, $bannerY, $canvasW, $canvasH, $bgColor);
+            if ($opacity > 0) {
+                imagefilledrectangle($srcImg, 0, $bannerY, $canvasW, $canvasH, $bgColor);
+            }
 
             $badgeW = (int) round($baseBadgeSize * 3.6);
             $badgeH = (int) round($baseBadgeSize * 2.0);
-            $badgeX = (int) round($canvasW * 0.04);
-            $badgeY = $bannerY + (int) round($bannerH * 0.16);
+            $gap = (int) round($canvasW * 0.03);
+            $showBadge = ! empty($style['show_badge'] ?? true);
 
-            $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
-            imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
-            $badgeTextColor = imagecolorallocate($srcImg, 15, 23, 42);
-
-            if ($useTtf) {
-                imagettftext($srcImg, $baseBadgeSize, 0, $badgeX + (int) round($badgeW * 0.18), $badgeY + (int) round($badgeH * 0.72), $badgeTextColor, $fontBold, $badgeText);
-            }
-
-            $titleX = $badgeX + $badgeW + (int) round($canvasW * 0.03);
-            $titleY = $badgeY + (int) round($badgeH * 0.78);
             if ($titleText !== '') {
                 if ($useTtf) {
-                    if ($hasShadow) {
-                        imagettftext($srcImg, $baseTitleSize, 0, $titleX + 2, $titleY + 2, $shadowColor, $fontBold, $titleText);
-                    }
-                    imagettftext($srcImg, $baseTitleSize, 0, $titleX, $titleY, $textColor, $fontBold, $titleText);
+                    [$titleW] = $this->measureText($baseTitleSize, $fontBold, $titleText);
                 } else {
-                    imagestring($srcImg, 5, $titleX, $titleY - 15, $titleText, $textColor);
+                    $titleW = imagefontwidth(5) * strlen($titleText);
                 }
+            } else {
+                $titleW = 0;
+            }
+
+            $totalHeaderW = ($showBadge ? ($badgeW + $gap) : 0) + $titleW;
+
+            if ($textAlign === 'center') {
+                $startX = max($pad, (int) round(($canvasW - $totalHeaderW) / 2));
+            } elseif ($textAlign === 'right') {
+                $startX = max($pad, $canvasW - $pad - $totalHeaderW);
+            } else {
+                $startX = max($pad, (int) round($canvasW * 0.04));
+            }
+
+            $badgeY = $bannerY + (int) round($bannerH * 0.16);
+
+            if ($showBadge) {
+                $badgeX = $startX;
+                $badgeColor = imagecolorallocate($srcImg, $badgeR, $badgeG, $badgeB);
+                imagefilledrectangle($srcImg, $badgeX, $badgeY, $badgeX + $badgeW, $badgeY + $badgeH, $badgeColor);
+                $badgeTextColor = imagecolorallocate($srcImg, 15, 23, 42);
+
+                if ($useTtf) {
+                    imagettftext($srcImg, $baseBadgeSize, 0, $badgeX + (int) round($badgeW * 0.18), $badgeY + (int) round($badgeH * 0.72), $badgeTextColor, $fontBold, $badgeText);
+                }
+
+                $titleX = $badgeX + $badgeW + $gap;
+            } else {
+                $titleX = $startX;
+            }
+
+            $titleY = $badgeY + (int) round($badgeH * 0.78);
+            if ($titleText !== '') {
+                $this->renderTextWithDropShadow($srcImg, $baseTitleSize, 0, $titleX, $titleY, $textColor, $fontBold, $titleText, $hasShadow, $canvasW / 1080);
             }
 
             if ($descText !== '') {
-                $descX = $badgeX;
                 $descY = $badgeY + $badgeH + (int) round($baseDescSize * 1.6);
-                $maxW = $canvasW - ($descX * 2);
+                $maxW = $canvasW - ($pad * 2);
                 $lines = $this->wrapText($baseDescSize, $fontFile, $descText, $maxW);
                 $lineH = (int) round($baseDescSize * 1.4);
 
                 foreach (array_slice($lines, 0, 2) as $lIndex => $line) {
                     $yPos = $descY + ($lIndex * $lineH);
                     if ($useTtf) {
-                        imagettftext($srcImg, $baseDescSize, 0, $descX, $yPos, $textColor, $fontFile, $line);
+                        [$descW] = $this->measureText($baseDescSize, $fontFile, $line);
+                        $descX = $textAlign === 'center' ? max($pad, (int) round(($canvasW - $descW) / 2)) : $startX;
+                        $this->renderTextWithDropShadow($srcImg, $baseDescSize, 0, $descX, $yPos, $textColor, $fontFile, $line, $hasShadow, $canvasW / 1080);
                     } else {
-                        imagestring($srcImg, 3, $descX, $yPos - 10, $line, $textColor);
+                        imagestring($srcImg, 3, $startX, $yPos - 10, $line, $textColor);
                     }
                 }
             }
@@ -1315,8 +1538,7 @@ class ProjectService
         foreach ($words as $word) {
             $testLine = $currentLine === '' ? $word : $currentLine.' '.$word;
             if (function_exists('imagettfbbox') && file_exists($fontFile)) {
-                $bbox = imagettfbbox($fontSize, 0, $fontFile, $testLine);
-                $width = abs($bbox[4] - $bbox[0]);
+                [$width] = $this->measureText($fontSize, $fontFile, $testLine);
             } else {
                 $width = strlen($testLine) * imagefontwidth(4);
             }
@@ -1511,9 +1733,9 @@ class ProjectService
         $bgColor = imagecolorallocate($canvas, $bgR, $bgG, $bgB);
         imagefill($canvas, 0, 0, $bgColor);
 
-        $fontBold = 'C:/Windows/Fonts/arialbd.ttf';
-        $fontRegular = 'C:/Windows/Fonts/arial.ttf';
-        $useTtf = function_exists('imagettftext') && file_exists($fontBold);
+        $fontBold = $this->resolveTtfFont(true) ?: $this->resolveTtfFont(false);
+        $fontRegular = $this->resolveTtfFont(false) ?: $fontBold;
+        $useTtf = function_exists('imagettftext') && $fontBold !== null;
 
         // Render Header
         if ($headerEnabled) {
@@ -1716,5 +1938,120 @@ class ProjectService
         $zip->close();
 
         return File::exists($zipPath) ? $zipPath : null;
+    }
+
+    /**
+     * Render text onto GD image with a rich, multi-layered drop shadow for enhanced readability and depth.
+     * Uses HarfBuzz (hb-view) for complex OpenType script shaping (e.g. Bengali conjuncts and matras)
+     * with transparent fallback to imagettftext.
+     */
+    private function renderTextWithDropShadow($srcImg, int $size, int $angle, int $x, int $y, int $textColor, ?string $fontFile, string $text, bool $hasShadow = true, float $scale = 1.0): void
+    {
+        if ($text === '') {
+            return;
+        }
+
+        $hbView = $this->getHbViewBinary();
+        if ($hbView && $fontFile && file_exists($fontFile)) {
+            try {
+                $rgba = imagecolorsforindex($srcImg, $textColor);
+                $hexFg = sprintf('#%02x%02x%02x', $rgba['red'], $rgba['green'], $rgba['blue']);
+
+                $fgProcess = new Process([
+                    $hbView,
+                    "--font-size={$size}",
+                    '--background=none',
+                    "--foreground={$hexFg}",
+                    '--margin=0',
+                    '-o',
+                    '-',
+                    $fontFile,
+                    $text,
+                ]);
+                $fgProcess->setTimeout(5);
+                $fgProcess->run();
+
+                if ($fgProcess->isSuccessful()) {
+                    $fgImg = @imagecreatefromstring($fgProcess->getOutput());
+                    if ($fgImg) {
+                        imagealphablending($fgImg, true);
+                        imagesavealpha($fgImg, true);
+                        imagealphablending($srcImg, true);
+
+                        $fgW = imagesx($fgImg);
+                        $fgH = imagesy($fgImg);
+                        $topY = $y - (int) round($size * 0.82);
+
+                        if ($hasShadow) {
+                            $offsetY = max(2, (int) round(3.5 * $scale));
+                            $offsetX = max(1, (int) round(2.0 * $scale));
+                            $spread = max(1, (int) round(1.8 * $scale));
+
+                            $shadowProcess = new Process([
+                                $hbView,
+                                "--font-size={$size}",
+                                '--background=none',
+                                '--foreground=#00000075',
+                                '--margin=0',
+                                '-o',
+                                '-',
+                                $fontFile,
+                                $text,
+                            ]);
+                            $shadowProcess->setTimeout(5);
+                            $shadowProcess->run();
+
+                            if ($shadowProcess->isSuccessful()) {
+                                $shadowImg = @imagecreatefromstring($shadowProcess->getOutput());
+                                if ($shadowImg) {
+                                    imagealphablending($shadowImg, true);
+                                    imagesavealpha($shadowImg, true);
+
+                                    // Ambient diffused shadow passes
+                                    imagecopy($srcImg, $shadowImg, $x - $spread, $topY + $offsetY, 0, 0, $fgW, $fgH);
+                                    imagecopy($srcImg, $shadowImg, $x + $spread, $topY + $offsetY, 0, 0, $fgW, $fgH);
+                                    imagecopy($srcImg, $shadowImg, $x, $topY + $offsetY + $spread, 0, 0, $fgW, $fgH);
+
+                                    // Direct prominent shadow pass
+                                    imagecopy($srcImg, $shadowImg, $x + $offsetX, $topY + $offsetY, 0, 0, $fgW, $fgH);
+
+                                    imagedestroy($shadowImg);
+                                }
+                            }
+                        }
+
+                        imagecopy($srcImg, $fgImg, $x, $topY, 0, 0, $fgW, $fgH);
+                        imagedestroy($fgImg);
+
+                        return;
+                    }
+                }
+            } catch (\Throwable) {
+                // Fallback to imagettftext
+            }
+        }
+
+        if ($hasShadow && function_exists('imagettftext') && $fontFile) {
+            $offsetY = max(2, (int) round(3.5 * $scale));
+            $offsetX = max(1, (int) round(2.0 * $scale));
+            $spread = max(1, (int) round(1.8 * $scale));
+
+            // Ambient diffused shadow passes
+            $shadowAmbient = imagecolorallocatealpha($srcImg, 0, 0, 0, 105);
+            imagettftext($srcImg, $size, $angle, $x - $spread, $y + $offsetY, $shadowAmbient, $fontFile, $text);
+            imagettftext($srcImg, $size, $angle, $x + $spread, $y + $offsetY, $shadowAmbient, $fontFile, $text);
+            imagettftext($srcImg, $size, $angle, $x, $y + $offsetY + $spread, $shadowAmbient, $fontFile, $text);
+
+            // Direct prominent shadow pass
+            $shadowDirect = imagecolorallocatealpha($srcImg, 0, 0, 0, 60);
+            imagettftext($srcImg, $size, $angle, $x + $offsetX, $y + $offsetY, $shadowDirect, $fontFile, $text);
+        }
+
+        // Crisp foreground text
+        if (function_exists('imagettftext') && $fontFile) {
+            imagettftext($srcImg, $size, $angle, $x, $y, $textColor, $fontFile, $text);
+        } else {
+            imagestring($srcImg, 5, $x, $y - 15, $text, $textColor);
+        }
     }
 }

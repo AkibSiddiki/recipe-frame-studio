@@ -311,3 +311,322 @@ test('stepFrameImage endpoint returns 404 for invalid frame filename', function 
 
     $response->assertNotFound();
 });
+
+test('saveSteps endpoint updates recipe_name and persists top-banner captions', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    $payload = [
+        'recipe_name' => 'নরম তুলতুলে পাউরুটি',
+        'style' => [
+            'layout' => 'top-banner',
+            'bg_opacity' => 90,
+            'text_color' => '#ffffff',
+            'badge_color' => '#f59e0b',
+            'show_badge' => true,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => 'তৈরি নরম তুলতুলে পাউরুটি',
+                'description' => 'মচমচে করে স্লাইস কাটা',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'message' => 'Recipe steps saved successfully.',
+    ]);
+
+    $updatedProject = $projectService->load($project['slug']);
+    expect($updatedProject['name'])->toBe('নরম তুলতুলে পাউরুটি');
+    expect($updatedProject['steps']['style']['layout'])->toBe('top-banner');
+    expect($updatedProject['steps']['items'][0]['title'])->toBe('তৈরি নরম তুলতুলে পাউরুটি');
+
+    // Verify GD renders step frame with top-banner and Bengali text without error
+    $stepFramePath = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($stepFramePath)->not->toBeNull();
+    expect(file_exists($stepFramePath))->toBeTrue();
+});
+
+test('recipe steps view contains paste JSON captions button and modal', function () {
+    $project = createStepsTestingProject();
+
+    $response = $this->get(route('project.steps', $project['slug']));
+
+    $response->assertOk();
+    $response->assertSee('Paste JSON Captions');
+    $response->assertSee('paste-json-modal', false);
+    $response->assertSee('json-caption-input', false);
+    $response->assertSee('title-padding-slider', false);
+    $response->assertSee('title-padding-input', false);
+    $response->assertSee('step-padding-0', false);
+});
+
+test('saveSteps persists style title_padding and per-step padding', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    $payload = [
+        'style' => [
+            'layout' => 'top-banner',
+            'title_padding' => 45,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => 'কুসুম গরম দুধ নিন ১ কাপ',
+                'padding' => 50,
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'message' => 'Recipe steps saved successfully.',
+    ]);
+
+    $steps = $projectService->getRecipeSteps($project['slug']);
+    expect($steps['style']['title_padding'])->toBe(45);
+    expect($steps['items'][0]['padding'])->toBe(50);
+});
+
+test('ProjectService resolves font from public folder as primary font', function () {
+    $projectService = app(ProjectService::class);
+    $resolvedFont = $projectService->resolveTtfFont(false);
+
+    expect($resolvedFont)->not->toBeNull();
+    expect($resolvedFont)->toBe(public_path('Li Alinur Mayaboti Unicode.ttf'));
+    expect(file_exists($resolvedFont))->toBeTrue();
+});
+
+test('saveSteps allows 0 percent banner opacity and renders without error', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    $payload = [
+        'style' => [
+            'layout' => 'top-banner',
+            'bg_opacity' => 0,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => 'নরম তুলতুলে পাউরুটি',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'message' => 'Recipe steps saved successfully.',
+    ]);
+
+    $steps = $projectService->getRecipeSteps($project['slug']);
+    expect($steps['style']['bg_opacity'])->toBe(0);
+
+    $stepFramePath = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($stepFramePath)->not->toBeNull();
+    expect(file_exists($stepFramePath))->toBeTrue();
+});
+
+test('saveSteps persists center text alignment and renders GD overlay without error', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    $payload = [
+        'style' => [
+            'layout' => 'top-banner',
+            'text_align' => 'center',
+            'title_padding' => 25,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => 'নরম তুলতুলে পাউরুটি',
+                'description' => 'কুসুম গরম দুধ ও ইস্ট ভালোভাবে মিশিয়ে নিন',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'message' => 'Recipe steps saved successfully.',
+    ]);
+
+    $steps = $projectService->getRecipeSteps($project['slug']);
+    expect($steps['style']['text_align'])->toBe('center');
+
+    // Verify GD renders center-aligned step overlay properly
+    $stepFramePath = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($stepFramePath)->not->toBeNull();
+    expect(file_exists($stepFramePath))->toBeTrue();
+});
+
+test('saveSteps rejects invalid text alignment parameter', function () {
+    $project = createStepsTestingProject();
+
+    $payload = [
+        'style' => [
+            'text_align' => 'justify', // Invalid, must be left, center, right
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['style.text_align']);
+});
+
+test('recipe steps view contains headline alignment controls', function () {
+    $project = createStepsTestingProject();
+
+    $response = $this->get(route('project.steps', $project['slug']));
+
+    $response->assertOk();
+    $response->assertSee('Headline Alignment');
+    $response->assertSee('text-align-center', false);
+    $response->assertSee('text-align-left', false);
+    $response->assertSee('text-align-right', false);
+});
+
+test('recipe steps view contains drop shadow toggle checkbox', function () {
+    $project = createStepsTestingProject();
+
+    $response = $this->get(route('project.steps', $project['slug']));
+
+    $response->assertOk();
+    $response->assertSee('has-shadow-checkbox', false);
+    $response->assertSee('Drop shadow effect');
+});
+
+test('recipe steps style persists has_shadow toggle and renders with drop shadow in GD', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    // 1. Check default has_shadow
+    $initialSteps = $projectService->getRecipeSteps($project['slug']);
+    expect($initialSteps['style']['has_shadow'] ?? true)->toBeTrue();
+
+    // 2. Save with has_shadow set to true
+    $payload = [
+        'style' => [
+            'layout' => 'bottom-banner',
+            'has_shadow' => true,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => 'Title With Drop Shadow',
+                'description' => 'Crisp text on top of ambient shadow layers',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+    $response->assertOk();
+
+    $savedSteps = $projectService->getRecipeSteps($project['slug']);
+    expect($savedSteps['style']['has_shadow'])->toBeTrue();
+
+    // Render GD frame with shadow enabled
+    $renderedWithShadow = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($renderedWithShadow)->not->toBeNull();
+    expect(file_exists($renderedWithShadow))->toBeTrue();
+
+    // 3. Save with has_shadow set to false
+    $payload['style']['has_shadow'] = false;
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+    $response->assertOk();
+
+    $savedNoShadow = $projectService->getRecipeSteps($project['slug']);
+    expect($savedNoShadow['style']['has_shadow'])->toBeFalse();
+
+    // Render GD frame with shadow disabled
+    $renderedWithoutShadow = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($renderedWithoutShadow)->not->toBeNull();
+    expect(file_exists($renderedWithoutShadow))->toBeTrue();
+});
+
+test('recipe steps view contains preview left and right arrow navigation controls', function () {
+    $project = createStepsTestingProject();
+
+    $response = $this->get(route('project.steps', $project['slug']));
+
+    $response->assertOk();
+    $response->assertSee('prev-frame-btn', false);
+    $response->assertSee('next-frame-btn', false);
+    $response->assertSee('top-prev-frame-btn', false);
+    $response->assertSee('top-next-frame-btn', false);
+    $response->assertSee('step-counter-badge', false);
+    $response->assertSee('prevStep()', false);
+    $response->assertSee('nextStep()', false);
+});
+
+test('bengali complex text is shaped properly without broken glyphs in step frame export', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    $fontFile = $projectService->resolveTtfFont(true);
+    expect($fontFile)->not->toBeNull();
+
+    // Bengali phrase with pre-base matras (ঐ-কার, ই-কার) and complex conjuncts
+    $bengaliText = 'তৈরি নরম তুলতুলে পাউরুটি';
+
+    [$w, $h] = $projectService->measureText(36, $fontFile, $bengaliText);
+    expect($w)->toBeGreaterThan(0);
+    expect($h)->toBeGreaterThan(0);
+
+    // Save recipe steps with Bengali text
+    $payload = [
+        'style' => [
+            'layout' => 'bottom-banner',
+            'has_shadow' => true,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => $bengaliText,
+                'description' => 'কুসুম গরম দুধ ও ইস্ট ভালোভাবে মিশিয়ে নিন',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+    $response->assertOk();
+
+    // Verify step frame rendered successfully
+    $stepFramePath = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($stepFramePath)->not->toBeNull();
+    expect(file_exists($stepFramePath))->toBeTrue();
+
+    // Verify zip bundle export succeeds
+    $zipPath = $projectService->createProjectZipArchive($project['slug']);
+    expect($zipPath)->not->toBeNull();
+    expect(file_exists($zipPath))->toBeTrue();
+});

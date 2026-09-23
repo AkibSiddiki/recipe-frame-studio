@@ -4,10 +4,27 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+@font-face {
+    font-family: 'Li Alinur Mayaboti';
+    src: url('/Li%20Alinur%20Mayaboti%20Unicode.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Li Alinur Mayaboti';
+    src: url('/Li%20Alinur%20Mayaboti%20Unicode%20Italic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
 /* ── Design Tokens ── */
 @theme {
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+    --font-bengali: 'Li Alinur Mayaboti', 'Hind Siliguri', sans-serif;
 
     --color-surface-base: #0b1120;
     --color-surface-raised: #131b2e;

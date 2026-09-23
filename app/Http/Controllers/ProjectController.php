@@ -529,6 +529,7 @@ class ProjectController extends Controller
         }
 
         $validated = $request->validate([
+            'recipe_name' => ['nullable', 'string', 'max:150'],
             'style' => ['nullable', 'array'],
             'style.layout' => ['nullable', 'string', 'in:bottom-banner,lower-third,top-banner,badge-only'],
             'style.bg_color' => ['nullable', 'string', 'max:20'],
@@ -537,7 +538,10 @@ class ProjectController extends Controller
             'style.badge_color' => ['nullable', 'string', 'max:20'],
             'style.badge_text_color' => ['nullable', 'string', 'max:20'],
             'style.show_badge' => ['nullable', 'boolean'],
+            'style.has_shadow' => ['nullable', 'boolean'],
             'style.font_size' => ['nullable', 'string', 'in:small,medium,large'],
+            'style.title_padding' => ['nullable', 'integer', 'min:0', 'max:200'],
+            'style.text_align' => ['nullable', 'string', 'in:left,center,right'],
             'items' => ['nullable', 'array'],
             'items.*.frame_id' => ['required', 'string'],
             'items.*.step_number' => ['nullable', 'integer', 'min:1'],
@@ -545,6 +549,8 @@ class ProjectController extends Controller
             'items.*.description' => ['nullable', 'string', 'max:500'],
             'items.*.ingredients' => ['nullable', 'string', 'max:250'],
             'items.*.enabled' => ['nullable', 'boolean'],
+            'items.*.padding' => ['nullable', 'integer', 'min:0', 'max:200'],
+            'items.*.text_align' => ['nullable', 'string', 'in:left,center,right'],
         ]);
 
         $updatedSteps = $this->projectService->saveRecipeSteps($slug, $validated);

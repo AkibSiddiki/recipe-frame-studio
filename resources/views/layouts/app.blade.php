@@ -12,7 +12,24 @@
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|outfit:400,500,600,700,800" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|outfit:400,500,600,700,800|hind-siliguri:400,500,600,700" rel="stylesheet" />
+    <link rel="preload" href="/Li%20Alinur%20Mayaboti%20Unicode.ttf" as="font" type="font/ttf" crossorigin>
+    <style>
+        @font-face {
+            font-family: 'Li Alinur Mayaboti';
+            src: url('/Li%20Alinur%20Mayaboti%20Unicode.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Li Alinur Mayaboti';
+            src: url('/Li%20Alinur%20Mayaboti%20Unicode%20Italic.ttf') format('truetype');
+            font-weight: normal;
+            font-style: italic;
+            font-display: swap;
+        }
+    </style>
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
