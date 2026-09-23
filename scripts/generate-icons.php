@@ -1,6 +1,6 @@
 <?php
 
-$sourcePath = 'C:\\Users\\asapu\\.gemini\\antigravity-ide\\brain\\c7d8c493-33d1-41e8-81b4-a80d8e00117e\\.user_uploaded\\media_1790107614677.png';
+$sourcePath = __DIR__.'/../public/images/logo.png';
 
 if (! file_exists($sourcePath)) {
     echo "Error: Source image not found at $sourcePath\n";
@@ -110,8 +110,32 @@ file_put_contents($publicDir.'/icon.ico', $icoData);
 file_put_contents($publicDir.'/favicon.ico', $icoData);
 echo "Generated: public/icon.ico and public/favicon.ico\n";
 
-// For macOS packaging fallback
-file_put_contents($publicDir.'/icon.icns', $icoData);
+// Generate a native macOS icon when running on macOS.
+if (PHP_OS_FAMILY === 'Darwin' && function_exists('exec')) {
+    $iconsetDir = $publicDir.'/RecipeFrameStudio.iconset';
+    if (! is_dir($iconsetDir)) {
+        mkdir($iconsetDir, 0755, true);
+    }
+
+    foreach ([16, 32, 128, 256, 512] as $size) {
+        $icon = resizeImage($source, $size);
+        imagepng($icon, $iconsetDir.'/icon_'.$size.'x'.$size.'.png', 9);
+        imagedestroy($icon);
+
+        $doubleSize = $size * 2;
+        $icon = resizeImage($source, $doubleSize);
+        imagepng($icon, $iconsetDir.'/icon_'.$size.'x'.$size.'@2x.png', 9);
+        imagedestroy($icon);
+    }
+
+    exec('iconutil -c icns '.escapeshellarg($iconsetDir).' -o '.escapeshellarg($publicDir.'/icon.icns'));
+
+    foreach (glob($iconsetDir.'/*.png') ?: [] as $iconPath) {
+        unlink($iconPath);
+    }
+    rmdir($iconsetDir);
+}
+
 copy($publicDir.'/icon.png', $publicDir.'/IconTemplate.png');
 copy($publicDir.'/icon.png', $publicDir.'/IconTemplate@2x.png');
 echo "Generated macOS templates: public/IconTemplate.png\n";
