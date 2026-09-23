@@ -9,7 +9,31 @@ use Symfony\Component\Process\Process;
 
 class ProjectService
 {
-    public function __construct(private FfmpegService $ffmpeg) {}
+    /**
+     * Cache for complex script shaped text image resources.
+     *
+     * @var array<string, \GdImage|null>
+     */
+    private array $shapedTextCache = [];
+
+    /**
+     * Cache for text measurement dimensions.
+     *
+     * @var array<string, array{0: int, 1: int}>
+     */
+    private array $textMeasureCache = [];
+
+    /**
+     * Cached path to hb-view binary (or false if checked and unavailable).
+     */
+    private string|false|null $hbViewBinaryPath = null;
+
+    public function __construct(
+        private FfmpegService $ffmpeg,
+        private ?AppSettingService $appSetting = null,
+    ) {
+        $this->appSetting = $appSetting ?? app(AppSettingService::class);
+    }
 
     public function create(string $videoPath, ?string $name = null): array
     {
@@ -48,6 +72,22 @@ class ProjectService
 
         $now = date('c');
 
+        $lastCrop = $this->getLastCropSetup();
+        $targetRatio = $this->parseCropRatio($lastCrop['ratio'] ?? '4:5');
+        $videoW = $videoMetadata['width'] ?? 1080;
+        $cropW = $videoW;
+        $cropH = (int) round($videoW / $targetRatio);
+
+        $lastWatermark = $this->getLastWatermarkSetup();
+        if (! empty($lastWatermark['image_path']) && str_starts_with($lastWatermark['image_path'], 'watermark/')) {
+            $sharedLogo = storage_path('app'.DIRECTORY_SEPARATOR.'watermarks'.DIRECTORY_SEPARATOR.basename($lastWatermark['image_path']));
+            if (File::exists($sharedLogo)) {
+                $newWmDir = $projectPath.DIRECTORY_SEPARATOR.'watermark';
+                File::ensureDirectoryExists($newWmDir);
+                File::copy($sharedLogo, $newWmDir.DIRECTORY_SEPARATOR.basename($lastWatermark['image_path']));
+            }
+        }
+
         $projectData = [
             'name' => $name,
             'slug' => $slug,
@@ -56,28 +96,22 @@ class ProjectService
             'video' => $videoMetadata,
             'frames' => [],
             'crop' => [
-                'ratio' => '4:5',
-                'width' => $videoMetadata['width'] ?? 1080,
-                'height' => isset($videoMetadata['width']) ? (int) ($videoMetadata['width'] * 1.25) : 1350,
+                'ratio' => $lastCrop['ratio'] ?? '4:5',
+                'preset' => $lastCrop['preset'] ?? 'facebook-portrait',
+                'default_alignment' => $lastCrop['default_alignment'] ?? 'center',
+                'width' => $cropW,
+                'height' => $cropH,
             ],
-            'watermark' => config('recipe-studio.watermark', [
-                'enabled' => true,
-                'type' => 'image',
-                'image_path' => 'images/default-watermark.png',
-                'position' => 'bottom-right',
-                'opacity' => 85,
-                'margin' => 30,
-                'size' => 18,
-                'text' => '@রান্নাঘরেরডায়েরি',
-                'color' => '#ffffff',
-                'has_shadow' => false,
-                'has_pill' => true,
-            ]),
-            'steps' => [],
+            'watermark' => $lastWatermark,
+            'steps' => [
+                'style' => $this->getLastRecipeStepsSetup(),
+                'items' => [],
+            ],
             'export' => [
                 'format' => 'jpg',
                 'quality' => 90,
             ],
+            'collage' => $this->getLastCollageSetup(),
         ];
 
         $this->save($slug, $projectData);
@@ -138,6 +172,233 @@ class ProjectService
         });
 
         return array_slice($projects, 0, $limit);
+    }
+
+    public function parseCropRatio(string $ratioStr): float
+    {
+        $parts = explode(':', $ratioStr);
+        if (count($parts) === 2 && (float) $parts[1] > 0) {
+            return (float) $parts[0] / (float) $parts[1];
+        }
+
+        return 4.0 / 5.0;
+    }
+
+    public function getLastCropSetup(): array
+    {
+        $saved = $this->appSetting->getLastCropSetup();
+        if (is_array($saved) && ! empty($saved['ratio'])) {
+            return $saved;
+        }
+
+        $seeded = $this->seedLastSetupsFromRecentProject();
+        if (! empty($seeded['crop'])) {
+            return $seeded['crop'];
+        }
+
+        return [
+            'ratio' => '4:5',
+            'preset' => 'facebook-portrait',
+            'default_alignment' => 'center',
+            'width' => 1080,
+            'height' => 1350,
+        ];
+    }
+
+    public function getLastWatermarkSetup(): array
+    {
+        $saved = $this->appSetting->getLastWatermarkSetup();
+        if (is_array($saved) && isset($saved['enabled'])) {
+            return $saved;
+        }
+
+        $seeded = $this->seedLastSetupsFromRecentProject();
+        if (! empty($seeded['watermark'])) {
+            return $seeded['watermark'];
+        }
+
+        return config('recipe-studio.watermark', [
+            'enabled' => true,
+            'type' => 'image',
+            'image_path' => 'images/default-watermark.png',
+            'position' => 'bottom-right',
+            'opacity' => 85,
+            'margin' => 30,
+            'size' => 18,
+            'text' => '@রান্নাঘরেরডায়েরি',
+            'color' => '#ffffff',
+            'has_shadow' => false,
+            'has_pill' => true,
+        ]);
+    }
+
+    public function getLastRecipeStepsSetup(): array
+    {
+        $saved = $this->appSetting->getLastRecipeStepsSetup();
+        if (is_array($saved) && ! empty($saved['layout'])) {
+            return $saved;
+        }
+
+        $seeded = $this->seedLastSetupsFromRecentProject();
+        if (! empty($seeded['steps']['style'])) {
+            return $seeded['steps']['style'];
+        }
+
+        return [
+            'layout' => 'bottom-banner',
+            'size' => 'medium',
+            'font_size' => 'medium',
+            'bg_color' => '#0f172a',
+            'bg_opacity' => 85,
+            'text_color' => '#ffffff',
+            'badge_color' => '#f59e0b',
+            'badge_text_color' => '#ffffff',
+            'show_badge' => true,
+            'has_shadow' => true,
+            'title_padding' => 30,
+            'text_align' => 'left',
+        ];
+    }
+
+    public function getLastCollageSetup(): array
+    {
+        $saved = $this->appSetting->getLastCollageSetup();
+        if (is_array($saved) && ! empty($saved['layout'])) {
+            return $saved;
+        }
+
+        $seeded = $this->seedLastSetupsFromRecentProject();
+        if (! empty($seeded['collage'])) {
+            return $seeded['collage'];
+        }
+
+        return [
+            'layout' => 'auto-grid',
+            'header_enabled' => true,
+            'show_brand' => true,
+            'footer_enabled' => false,
+            'footer_text' => '@RecipeFrameStudio',
+            'bg_color' => '#0f172a',
+            'gap' => 16,
+            'padding' => 24,
+            'format' => 'jpg',
+            'quality' => 92,
+            'scale' => 1,
+        ];
+    }
+
+    public function seedLastSetupsFromRecentProject(): array
+    {
+        $recent = $this->getRecent(5);
+        if (empty($recent)) {
+            return [];
+        }
+
+        $seeded = [];
+        foreach ($recent as $projectInfo) {
+            $slug = $projectInfo['slug'] ?? '';
+            if (! $slug) {
+                continue;
+            }
+
+            $project = $this->load($slug);
+            if (! $project) {
+                continue;
+            }
+
+            if (! empty($project['crop']) && ! $this->appSetting->has('last_crop_setup')) {
+                $cropData = [
+                    'ratio' => $project['crop']['ratio'] ?? '4:5',
+                    'preset' => $project['crop']['preset'] ?? 'facebook-portrait',
+                    'default_alignment' => $project['crop']['default_alignment'] ?? 'center',
+                    'width' => (int) ($project['crop']['width'] ?? 1080),
+                    'height' => (int) ($project['crop']['height'] ?? 1350),
+                ];
+                $this->appSetting->setLastCropSetup($cropData);
+                $seeded['crop'] = $cropData;
+            }
+
+            if (! empty($project['watermark']) && ! $this->appSetting->has('last_watermark_setup')) {
+                $wm = $project['watermark'];
+                $wmData = [
+                    'enabled' => $wm['enabled'] ?? true,
+                    'type' => $wm['type'] ?? 'image',
+                    'text' => $wm['text'] ?? '@রান্নাঘরেরডায়েরি',
+                    'image_path' => $wm['image_path'] ?? 'images/default-watermark.png',
+                    'position' => $wm['position'] ?? 'bottom-left',
+                    'opacity' => (int) ($wm['opacity'] ?? 85),
+                    'size' => (int) ($wm['size'] ?? 18),
+                    'margin' => (int) ($wm['margin'] ?? 30),
+                    'color' => $wm['color'] ?? '#ffffff',
+                    'has_shadow' => ! empty($wm['has_shadow']),
+                    'has_pill' => isset($wm['has_pill']) ? (bool) $wm['has_pill'] : true,
+                ];
+                $this->appSetting->setLastWatermarkSetup($wmData);
+                $seeded['watermark'] = $wmData;
+            }
+
+            $stepsStyle = $project['steps']['style'] ?? ($project['recipe_steps']['style'] ?? null);
+            if (! empty($stepsStyle) && ! $this->appSetting->has('last_recipe_steps_setup')) {
+                $this->appSetting->setLastRecipeStepsSetup($stepsStyle);
+                $seeded['steps']['style'] = $stepsStyle;
+            }
+
+            if (! empty($project['collage']) && ! $this->appSetting->has('last_collage_setup')) {
+                $this->appSetting->setLastCollageSetup($project['collage']);
+                $seeded['collage'] = $project['collage'];
+            }
+
+            if (! empty($seeded)) {
+                return $seeded;
+            }
+        }
+
+        return [];
+    }
+
+    public function applyLastSetupToProject(string $slug, string $type = 'all'): ?array
+    {
+        $project = $this->load($slug);
+        if (! $project) {
+            return null;
+        }
+
+        if ($type === 'crop' || $type === 'all') {
+            $lastCrop = $this->getLastCropSetup();
+            $this->saveCropSettings($slug, [
+                'ratio' => $lastCrop['ratio'] ?? '4:5',
+                'preset' => $lastCrop['preset'] ?? 'facebook-portrait',
+                'default_alignment' => $lastCrop['default_alignment'] ?? 'center',
+                'width' => $lastCrop['width'] ?? 1080,
+                'height' => $lastCrop['height'] ?? 1350,
+                'apply_to_all' => true,
+            ]);
+            $project = $this->load($slug);
+        }
+
+        if ($type === 'watermark' || $type === 'all') {
+            $lastWm = $this->getLastWatermarkSetup();
+            $this->saveWatermarkSettings($slug, $lastWm);
+            $project = $this->load($slug);
+        }
+
+        if ($type === 'steps' || $type === 'all') {
+            $lastStyle = $this->getLastRecipeStepsSetup();
+            $steps = $this->getRecipeSteps($slug);
+            $this->saveRecipeSteps($slug, [
+                'style' => $lastStyle,
+                'items' => $steps['items'] ?? [],
+            ]);
+            $project = $this->load($slug);
+        }
+
+        if ($type === 'collage' || $type === 'all') {
+            $lastCollage = $this->getLastCollageSetup();
+            $this->saveCollageSettings($slug, $lastCollage);
+            $project = $this->load($slug);
+        }
+
+        return $project;
     }
 
     public function getProjectsBasePath(): string
@@ -459,6 +720,14 @@ class ProjectService
         $project['updated_at'] = date('c');
         $this->save($slug, $project);
 
+        $this->appSetting->setLastCropSetup([
+            'ratio' => $project['crop']['ratio'] ?? '4:5',
+            'preset' => $project['crop']['preset'] ?? 'facebook-portrait',
+            'default_alignment' => $project['crop']['default_alignment'] ?? 'center',
+            'width' => (int) ($project['crop']['width'] ?? 1080),
+            'height' => (int) ($project['crop']['height'] ?? 1350),
+        ]);
+
         // Clear existing cached cropped images so they regenerate with new crop coordinates
         if (File::isDirectory($croppedDir)) {
             File::cleanDirectory($croppedDir);
@@ -661,6 +930,20 @@ class ProjectService
         $project['updated_at'] = date('c');
         $this->save($slug, $project);
 
+        $this->appSetting->setLastWatermarkSetup([
+            'enabled' => $project['watermark']['enabled'],
+            'type' => $project['watermark']['type'],
+            'text' => $project['watermark']['text'],
+            'image_path' => $project['watermark']['image_path'],
+            'position' => $project['watermark']['position'],
+            'opacity' => (int) $project['watermark']['opacity'],
+            'size' => (int) $project['watermark']['size'],
+            'margin' => (int) $project['watermark']['margin'],
+            'color' => $project['watermark']['color'],
+            'has_shadow' => (bool) $project['watermark']['has_shadow'],
+            'has_pill' => (bool) $project['watermark']['has_pill'],
+        ]);
+
         // Clear existing cached watermarked frames and downstream steps/output
         if (File::isDirectory($watermarkedDir)) {
             File::cleanDirectory($watermarkedDir);
@@ -708,6 +991,11 @@ class ProjectService
 
         $relativePath = 'watermark/'.$filename;
 
+        // Copy to shared watermarks directory for cross-project reuse
+        $sharedDir = storage_path('app'.DIRECTORY_SEPARATOR.'watermarks');
+        File::ensureDirectoryExists($sharedDir);
+        File::copy($destPath, $sharedDir.DIRECTORY_SEPARATOR.$filename);
+
         // Auto update project watermark config to use this image
         $currentWatermark = is_array($project['watermark'] ?? null) ? $project['watermark'] : [];
         $currentWatermark['image_path'] = $relativePath;
@@ -716,6 +1004,12 @@ class ProjectService
 
         $project['watermark'] = $currentWatermark;
         $this->save($slug, $project);
+
+        $lastWm = $this->getLastWatermarkSetup();
+        $lastWm['type'] = 'image';
+        $lastWm['enabled'] = true;
+        $lastWm['image_path'] = $relativePath;
+        $this->appSetting->setLastWatermarkSetup($lastWm);
 
         return $relativePath;
     }
@@ -789,6 +1083,11 @@ class ProjectService
                 $publicPath = public_path(str_replace('/', DIRECTORY_SEPARATOR, $imageRelPath));
                 if (File::exists($publicPath)) {
                     $logoFullPath = $publicPath;
+                } else {
+                    $sharedPath = storage_path('app'.DIRECTORY_SEPARATOR.'watermarks'.DIRECTORY_SEPARATOR.basename($imageRelPath));
+                    if (File::exists($sharedPath)) {
+                        $logoFullPath = $sharedPath;
+                    }
                 }
             }
 
@@ -986,8 +1285,14 @@ class ProjectService
      */
     public function getHbViewBinary(): ?string
     {
+        if ($this->hbViewBinaryPath !== null) {
+            return $this->hbViewBinaryPath ?: null;
+        }
+
         $custom = config('recipe-studio.hb_view_path', env('HB_VIEW_PATH'));
         if ($custom && is_executable($custom)) {
+            $this->hbViewBinaryPath = $custom;
+
             return $custom;
         }
 
@@ -995,20 +1300,214 @@ class ProjectService
             '/opt/homebrew/bin/hb-view',
             '/usr/local/bin/hb-view',
             '/usr/bin/hb-view',
+            'C:/Program Files/HarfBuzz/hb-view.exe',
+            'C:/msys64/mingw64/bin/hb-view.exe',
         ];
 
         foreach ($candidates as $bin) {
             if (is_executable($bin)) {
+                $this->hbViewBinaryPath = $bin;
+
                 return $bin;
             }
         }
 
-        $which = trim((string) @shell_exec('which hb-view 2>/dev/null'));
-        if ($which !== '' && is_executable($which)) {
-            return $which;
+        $whichCmd = PHP_OS_FAMILY === 'Windows' ? 'where hb-view 2>nul' : 'which hb-view 2>/dev/null';
+        $which = trim((string) @shell_exec($whichCmd));
+        if ($which !== '') {
+            $lines = explode(PHP_EOL, $which);
+            $first = trim($lines[0] ?? '');
+            if ($first !== '' && file_exists($first) && is_executable($first)) {
+                $this->hbViewBinaryPath = $first;
+
+                return $first;
+            }
         }
 
+        $this->hbViewBinaryPath = false;
+
         return null;
+    }
+
+    /**
+     * Render complex OpenType script text (e.g. Bengali conjuncts, matras, Arabic, Devanagari)
+     * into a tightly cropped transparent GD image resource using HarfBuzz (hb-view or FFmpeg libharfbuzz).
+     */
+    public function renderShapedTextImage(string $text, int $size, string $color, ?string $fontFile): ?\GdImage
+    {
+        if ($text === '' || ! $fontFile || ! file_exists($fontFile)) {
+            return null;
+        }
+
+        $hexColor = str_starts_with($color, '#') ? $color : '#'.ltrim($color, '#');
+        $cacheKey = md5($text.'|'.$size.'|'.$hexColor.'|'.$fontFile);
+
+        if (array_key_exists($cacheKey, $this->shapedTextCache)) {
+            $cached = $this->shapedTextCache[$cacheKey];
+            if ($cached) {
+                $w = imagesx($cached);
+                $h = imagesy($cached);
+                $copy = imagecreatetruecolor($w, $h);
+                imagealphablending($copy, false);
+                imagesavealpha($copy, true);
+                $trans = imagecolorallocatealpha($copy, 0, 0, 0, 127);
+                imagefill($copy, 0, 0, $trans);
+                imagealphablending($copy, true);
+                imagecopy($copy, $cached, 0, 0, 0, 0, $w, $h);
+
+                return $copy;
+            }
+
+            return null;
+        }
+
+        // 1. Try hb-view if available
+        $hbView = $this->getHbViewBinary();
+        if ($hbView) {
+            try {
+                $fgProcess = new Process([
+                    $hbView,
+                    "--font-size={$size}",
+                    '--background=none',
+                    "--foreground={$hexColor}",
+                    '--margin=0',
+                    '-o',
+                    '-',
+                    $fontFile,
+                    $text,
+                ]);
+                $fgProcess->setTimeout(5);
+                $fgProcess->run();
+
+                if ($fgProcess->isSuccessful()) {
+                    $img = @imagecreatefromstring($fgProcess->getOutput());
+                    if ($img) {
+                        imagealphablending($img, true);
+                        imagesavealpha($img, true);
+                        $this->shapedTextCache[$cacheKey] = $img;
+
+                        return $img;
+                    }
+                }
+            } catch (\Throwable) {
+                // Fallthrough to FFmpeg
+            }
+        }
+
+        // 2. Try FFmpeg with libharfbuzz
+        $ffmpegBin = $this->ffmpeg->detect();
+        if ($ffmpegBin) {
+            $tempTxt = tempnam(sys_get_temp_dir(), 'rfs_');
+            if ($tempTxt !== false) {
+                file_put_contents($tempTxt, $text);
+
+                $escapedFont = str_replace(['\\', ':'], ['/', '\\:'], $fontFile);
+                $escapedTxt = str_replace(['\\', ':'], ['/', '\\:'], $tempTxt);
+
+                $canvasW = min(4096, max(400, (int) round(mb_strlen($text) * $size * 1.6)));
+                $canvasH = max(60, (int) round($size * 3.0));
+
+                try {
+                    $process = new Process([
+                        $ffmpegBin,
+                        '-y',
+                        '-loglevel', 'error',
+                        '-f', 'lavfi',
+                        '-i', "color=c=black@0.0:s={$canvasW}x{$canvasH}:d=1,format=rgba",
+                        '-vf', "drawtext=fontfile='{$escapedFont}':textfile='{$escapedTxt}':expansion=none:fontsize={$size}:fontcolor={$hexColor}:text_shaping=1:x=0:y=0",
+                        '-vframes', '1',
+                        '-f', 'image2',
+                        '-c:v', 'png',
+                        '-',
+                    ]);
+                    $process->setTimeout(6);
+                    $process->run();
+                    @unlink($tempTxt);
+
+                    if ($process->isSuccessful()) {
+                        $rawPng = $process->getOutput();
+                        $im = @imagecreatefromstring($rawPng);
+                        if ($im) {
+                            $cropped = $this->cropTransparentBounds($im);
+
+                            if ($cropped) {
+                                imagealphablending($cropped, true);
+                                imagesavealpha($cropped, true);
+                                $this->shapedTextCache[$cacheKey] = $cropped;
+
+                                return $cropped;
+                            }
+                        }
+                    }
+                } catch (\Throwable) {
+                    @unlink($tempTxt);
+                }
+            }
+        }
+
+        $this->shapedTextCache[$cacheKey] = null;
+
+        return null;
+    }
+
+    /**
+     * Crop transparent margins from a GD image to get its exact non-transparent bounding box.
+     */
+    private function cropTransparentBounds(\GdImage $im): ?\GdImage
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+
+        $minY = 0;
+        while ($minY < $h) {
+            for ($x = 0; $x < $w; $x++) {
+                if (((imagecolorat($im, $x, $minY) >> 24) & 0x7F) < 127) {
+                    break 2;
+                }
+            }
+            $minY++;
+        }
+
+        if ($minY >= $h) {
+            return null;
+        }
+
+        $maxY = $h - 1;
+        while ($maxY > $minY) {
+            for ($x = 0; $x < $w; $x++) {
+                if (((imagecolorat($im, $x, $maxY) >> 24) & 0x7F) < 127) {
+                    break 2;
+                }
+            }
+            $maxY--;
+        }
+
+        $minX = 0;
+        while ($minX < $w) {
+            for ($y = $minY; $y <= $maxY; $y++) {
+                if (((imagecolorat($im, $minX, $y) >> 24) & 0x7F) < 127) {
+                    break 2;
+                }
+            }
+            $minX++;
+        }
+
+        $maxX = $w - 1;
+        while ($maxX > $minX) {
+            for ($y = $minY; $y <= $maxY; $y++) {
+                if (((imagecolorat($im, $maxX, $y) >> 24) & 0x7F) < 127) {
+                    break 2;
+                }
+            }
+            $maxX--;
+        }
+
+        $cropW = $maxX - $minX + 1;
+        $cropH = $maxY - $minY + 1;
+
+        $cropped = imagecrop($im, ['x' => $minX, 'y' => $minY, 'width' => $cropW, 'height' => $cropH]);
+
+        return $cropped !== false ? $cropped : null;
     }
 
     /**
@@ -1022,43 +1521,34 @@ class ProjectService
             return [0, 0];
         }
 
-        $hbView = $this->getHbViewBinary();
-        if ($hbView && $fontFile && file_exists($fontFile)) {
-            try {
-                $process = new Process([
-                    $hbView,
-                    "--font-size={$size}",
-                    '--background=none',
-                    '--margin=0',
-                    '-o',
-                    '-',
-                    $fontFile,
-                    $text,
-                ]);
-                $process->setTimeout(3);
-                $process->run();
-                if ($process->isSuccessful()) {
-                    $img = @imagecreatefromstring($process->getOutput());
-                    if ($img) {
-                        $w = imagesx($img);
-                        $h = imagesy($img);
-                        imagedestroy($img);
+        $cacheKey = $size.'|'.$fontFile.'|'.$text;
+        if (isset($this->textMeasureCache[$cacheKey])) {
+            return $this->textMeasureCache[$cacheKey];
+        }
 
-                        return [$w, $h];
-                    }
-                }
-            } catch (\Throwable) {
-                // Fallback to imagettfbbox below
+        // Try complex shaped text image first for 100% accurate Indic/Bengali font metrics
+        if ($fontFile && file_exists($fontFile)) {
+            $shaped = $this->renderShapedTextImage($text, $size, '#ffffff', $fontFile);
+            if ($shaped) {
+                $dims = [imagesx($shaped), imagesy($shaped)];
+                $this->textMeasureCache[$cacheKey] = $dims;
+
+                return $dims;
             }
         }
 
         if (function_exists('imagettfbbox') && $fontFile && file_exists($fontFile)) {
             $bbox = imagettfbbox($size, 0, $fontFile, $text);
+            $dims = [abs($bbox[2] - $bbox[0]), abs($bbox[5] - $bbox[1])];
+            $this->textMeasureCache[$cacheKey] = $dims;
 
-            return [abs($bbox[2] - $bbox[0]), abs($bbox[5] - $bbox[1])];
+            return $dims;
         }
 
-        return [strlen($text) * imagefontwidth(5), imagefontheight(5)];
+        $dims = [strlen($text) * imagefontwidth(5), imagefontheight(5)];
+        $this->textMeasureCache[$cacheKey] = $dims;
+
+        return $dims;
     }
 
     private function imagecopymergeAlpha($dst_im, $src_im, $dst_x, $dst_y, $src_x, $src_y, $src_w, $src_h, $pct): void
@@ -1079,17 +1569,7 @@ class ProjectService
 
         $selectedFrames = $this->getSelectedFrames($slug);
         $savedSteps = is_array($project['steps'] ?? null) ? $project['steps'] : [];
-        $defaultStyle = [
-            'layout' => 'bottom-banner',
-            'size' => 'medium',
-            'bg_color' => '#0f172a',
-            'bg_opacity' => 85,
-            'text_color' => '#ffffff',
-            'badge_color' => '#f59e0b',
-            'has_shadow' => true,
-            'title_padding' => 30,
-            'text_align' => 'left',
-        ];
+        $defaultStyle = $this->getLastRecipeStepsSetup();
         $style = array_merge($defaultStyle, $savedSteps['style'] ?? []);
 
         $savedItems = is_array($savedSteps['items'] ?? null) ? $savedSteps['items'] : [];
@@ -1138,17 +1618,7 @@ class ProjectService
             ? $project['steps']
             : (is_array($project['recipe_steps'] ?? null) ? $project['recipe_steps'] : []);
 
-        $defaultStyle = [
-            'layout' => 'bottom-banner',
-            'size' => 'medium',
-            'bg_color' => '#0f172a',
-            'bg_opacity' => 85,
-            'text_color' => '#ffffff',
-            'badge_color' => '#f59e0b',
-            'has_shadow' => true,
-            'title_padding' => 30,
-            'text_align' => 'left',
-        ];
+        $defaultStyle = $this->getLastRecipeStepsSetup();
 
         $style = array_merge(
             $defaultStyle,
@@ -1173,6 +1643,8 @@ class ProjectService
 
         $project['updated_at'] = date('c');
         $this->save($slug, $project);
+
+        $this->appSetting->setLastRecipeStepsSetup($style);
 
         $stepsDir = $this->getProjectPath($slug).DIRECTORY_SEPARATOR.'steps';
         if (File::isDirectory($stepsDir)) {
@@ -1566,24 +2038,25 @@ class ProjectService
         }
 
         $saved = is_array($project['collage'] ?? null) ? $project['collage'] : [];
+        $defaultCollage = $this->getLastCollageSetup();
 
         return [
-            'layout' => $saved['layout'] ?? 'auto-grid',
-            'header_enabled' => isset($saved['header_enabled']) ? (bool) $saved['header_enabled'] : true,
+            'layout' => $saved['layout'] ?? ($defaultCollage['layout'] ?? 'auto-grid'),
+            'header_enabled' => isset($saved['header_enabled']) ? (bool) $saved['header_enabled'] : ($defaultCollage['header_enabled'] ?? true),
             'title' => $saved['title'] ?? ($project['name'] ?? 'Recipe Collage'),
-            'subtitle' => $saved['subtitle'] ?? 'Step-by-step culinary guide',
-            'prep_time' => $saved['prep_time'] ?? '',
-            'cook_time' => $saved['cook_time'] ?? '',
-            'servings' => $saved['servings'] ?? '',
-            'show_brand' => isset($saved['show_brand']) ? (bool) $saved['show_brand'] : true,
-            'footer_enabled' => isset($saved['footer_enabled']) ? (bool) $saved['footer_enabled'] : false,
-            'footer_text' => $saved['footer_text'] ?? '@RecipeFrameStudio',
-            'bg_color' => $saved['bg_color'] ?? '#0f172a',
-            'gap' => (int) ($saved['gap'] ?? 16),
-            'padding' => (int) ($saved['padding'] ?? 24),
-            'format' => $saved['format'] ?? 'jpg',
-            'quality' => (int) ($saved['quality'] ?? 92),
-            'scale' => (int) ($saved['scale'] ?? 1),
+            'subtitle' => $saved['subtitle'] ?? ($defaultCollage['subtitle'] ?? 'Step-by-step culinary guide'),
+            'prep_time' => $saved['prep_time'] ?? ($defaultCollage['prep_time'] ?? ''),
+            'cook_time' => $saved['cook_time'] ?? ($defaultCollage['cook_time'] ?? ''),
+            'servings' => $saved['servings'] ?? ($defaultCollage['servings'] ?? ''),
+            'show_brand' => isset($saved['show_brand']) ? (bool) $saved['show_brand'] : ($defaultCollage['show_brand'] ?? true),
+            'footer_enabled' => isset($saved['footer_enabled']) ? (bool) $saved['footer_enabled'] : ($defaultCollage['footer_enabled'] ?? false),
+            'footer_text' => $saved['footer_text'] ?? ($defaultCollage['footer_text'] ?? '@RecipeFrameStudio'),
+            'bg_color' => $saved['bg_color'] ?? ($defaultCollage['bg_color'] ?? '#0f172a'),
+            'gap' => (int) ($saved['gap'] ?? ($defaultCollage['gap'] ?? 16)),
+            'padding' => (int) ($saved['padding'] ?? ($defaultCollage['padding'] ?? 24)),
+            'format' => $saved['format'] ?? ($defaultCollage['format'] ?? 'jpg'),
+            'quality' => (int) ($saved['quality'] ?? ($defaultCollage['quality'] ?? 92)),
+            'scale' => (int) ($saved['scale'] ?? ($defaultCollage['scale'] ?? 1)),
         ];
     }
 
@@ -1601,6 +2074,20 @@ class ProjectService
         $project['collage'] = $updatedCollage;
         $project['updated_at'] = date('c');
         $this->save($slug, $project);
+
+        $this->appSetting->setLastCollageSetup([
+            'layout' => $updatedCollage['layout'] ?? 'auto-grid',
+            'header_enabled' => (bool) ($updatedCollage['header_enabled'] ?? true),
+            'show_brand' => (bool) ($updatedCollage['show_brand'] ?? true),
+            'footer_enabled' => (bool) ($updatedCollage['footer_enabled'] ?? false),
+            'footer_text' => $updatedCollage['footer_text'] ?? '@RecipeFrameStudio',
+            'bg_color' => $updatedCollage['bg_color'] ?? '#0f172a',
+            'gap' => (int) ($updatedCollage['gap'] ?? 16),
+            'padding' => (int) ($updatedCollage['padding'] ?? 24),
+            'format' => $updatedCollage['format'] ?? 'jpg',
+            'quality' => (int) ($updatedCollage['quality'] ?? 92),
+            'scale' => (int) ($updatedCollage['scale'] ?? 1),
+        ]);
 
         $outputDir = $this->getProjectPath($slug).DIRECTORY_SEPARATOR.'output';
         if (File::isDirectory($outputDir)) {
@@ -1752,9 +2239,9 @@ class ProjectService
             $subSize = (int) round(14 * $scale);
 
             if ($useTtf) {
-                imagettftext($canvas, $titleSize, 0, $padding, $headerTop + (int) round($titleSize * 1.2), $titleColor, $fontBold, $titleText);
+                $this->renderTextWithDropShadow($canvas, $titleSize, 0, $padding, $headerTop + (int) round($titleSize * 1.2), $titleColor, $fontBold, $titleText, false);
                 if ($subtitleText !== '') {
-                    imagettftext($canvas, $subSize, 0, $padding, $headerTop + (int) round($titleSize * 1.3) + (int) round($subSize * 1.5), $subColor, $fontRegular, $subtitleText);
+                    $this->renderTextWithDropShadow($canvas, $subSize, 0, $padding, $headerTop + (int) round($titleSize * 1.3) + (int) round($subSize * 1.5), $subColor, $fontRegular, $subtitleText, false);
                 }
             } else {
                 imagestring($canvas, 5, $padding, $headerTop, $titleText, $titleColor);
@@ -1839,10 +2326,9 @@ class ProjectService
             $footerSize = (int) round(12 * $scale);
 
             if ($useTtf) {
-                $fBbox = imagettfbbox($footerSize, 0, $fontRegular, $footerText);
-                $fW = abs($fBbox[4] - $fBbox[0]);
+                [$fW] = $this->measureText($footerSize, $fontRegular, $footerText);
                 $fX = (int) round(($totalW - $fW) / 2);
-                imagettftext($canvas, $footerSize, 0, $fX, $footerY + $footerSize, $footerColor, $fontRegular, $footerText);
+                $this->renderTextWithDropShadow($canvas, $footerSize, 0, $fX, $footerY + $footerSize, $footerColor, $fontRegular, $footerText, false);
             } else {
                 $fX = (int) round(($totalW - (strlen($footerText) * 7)) / 2);
                 imagestring($canvas, 3, $fX, $footerY, $footerText, $footerColor);
@@ -1942,7 +2428,7 @@ class ProjectService
 
     /**
      * Render text onto GD image with a rich, multi-layered drop shadow for enhanced readability and depth.
-     * Uses HarfBuzz (hb-view) for complex OpenType script shaping (e.g. Bengali conjuncts and matras)
+     * Uses HarfBuzz (hb-view or FFmpeg libharfbuzz) for complex OpenType script shaping (e.g. Bengali conjuncts and matras)
      * with transparent fallback to imagettftext.
      */
     private function renderTextWithDropShadow($srcImg, int $size, int $angle, int $x, int $y, int $textColor, ?string $fontFile, string $text, bool $hasShadow = true, float $scale = 1.0): void
@@ -1951,86 +2437,42 @@ class ProjectService
             return;
         }
 
-        $hbView = $this->getHbViewBinary();
-        if ($hbView && $fontFile && file_exists($fontFile)) {
-            try {
-                $rgba = imagecolorsforindex($srcImg, $textColor);
-                $hexFg = sprintf('#%02x%02x%02x', $rgba['red'], $rgba['green'], $rgba['blue']);
+        if ($fontFile && file_exists($fontFile)) {
+            $rgba = is_int($textColor) ? imagecolorsforindex($srcImg, $textColor) : ['red' => 255, 'green' => 255, 'blue' => 255, 'alpha' => 0];
+            $hexFg = sprintf('#%02x%02x%02x', $rgba['red'], $rgba['green'], $rgba['blue']);
 
-                $fgProcess = new Process([
-                    $hbView,
-                    "--font-size={$size}",
-                    '--background=none',
-                    "--foreground={$hexFg}",
-                    '--margin=0',
-                    '-o',
-                    '-',
-                    $fontFile,
-                    $text,
-                ]);
-                $fgProcess->setTimeout(5);
-                $fgProcess->run();
+            $fgImg = $this->renderShapedTextImage($text, $size, $hexFg, $fontFile);
+            if ($fgImg) {
+                imagealphablending($srcImg, true);
 
-                if ($fgProcess->isSuccessful()) {
-                    $fgImg = @imagecreatefromstring($fgProcess->getOutput());
-                    if ($fgImg) {
-                        imagealphablending($fgImg, true);
-                        imagesavealpha($fgImg, true);
-                        imagealphablending($srcImg, true);
+                $fgW = imagesx($fgImg);
+                $fgH = imagesy($fgImg);
+                $topY = $y - (int) round($size * 0.82);
 
-                        $fgW = imagesx($fgImg);
-                        $fgH = imagesy($fgImg);
-                        $topY = $y - (int) round($size * 0.82);
+                if ($hasShadow) {
+                    $offsetY = max(2, (int) round(3.5 * $scale));
+                    $offsetX = max(1, (int) round(2.0 * $scale));
+                    $spread = max(1, (int) round(1.8 * $scale));
 
-                        if ($hasShadow) {
-                            $offsetY = max(2, (int) round(3.5 * $scale));
-                            $offsetX = max(1, (int) round(2.0 * $scale));
-                            $spread = max(1, (int) round(1.8 * $scale));
+                    $shadowImg = $this->renderShapedTextImage($text, $size, '#00000075', $fontFile);
+                    if ($shadowImg) {
+                        // Ambient diffused shadow passes
+                        imagecopy($srcImg, $shadowImg, $x - $spread, $topY + $offsetY, 0, 0, $fgW, $fgH);
+                        imagecopy($srcImg, $shadowImg, $x + $spread, $topY + $offsetY, 0, 0, $fgW, $fgH);
+                        imagecopy($srcImg, $shadowImg, $x, $topY + $offsetY + $spread, 0, 0, $fgW, $fgH);
 
-                            $shadowProcess = new Process([
-                                $hbView,
-                                "--font-size={$size}",
-                                '--background=none',
-                                '--foreground=#00000075',
-                                '--margin=0',
-                                '-o',
-                                '-',
-                                $fontFile,
-                                $text,
-                            ]);
-                            $shadowProcess->setTimeout(5);
-                            $shadowProcess->run();
-
-                            if ($shadowProcess->isSuccessful()) {
-                                $shadowImg = @imagecreatefromstring($shadowProcess->getOutput());
-                                if ($shadowImg) {
-                                    imagealphablending($shadowImg, true);
-                                    imagesavealpha($shadowImg, true);
-
-                                    // Ambient diffused shadow passes
-                                    imagecopy($srcImg, $shadowImg, $x - $spread, $topY + $offsetY, 0, 0, $fgW, $fgH);
-                                    imagecopy($srcImg, $shadowImg, $x + $spread, $topY + $offsetY, 0, 0, $fgW, $fgH);
-                                    imagecopy($srcImg, $shadowImg, $x, $topY + $offsetY + $spread, 0, 0, $fgW, $fgH);
-
-                                    // Direct prominent shadow pass
-                                    imagecopy($srcImg, $shadowImg, $x + $offsetX, $topY + $offsetY, 0, 0, $fgW, $fgH);
-
-                                    imagedestroy($shadowImg);
-                                }
-                            }
-                        }
-
-                        imagecopy($srcImg, $fgImg, $x, $topY, 0, 0, $fgW, $fgH);
-                        imagedestroy($fgImg);
-
-                        return;
+                        // Direct prominent shadow pass
+                        imagecopy($srcImg, $shadowImg, $x + $offsetX, $topY + $offsetY, 0, 0, $fgW, $fgH);
                     }
                 }
-            } catch (\Throwable) {
-                // Fallback to imagettftext
+
+                imagecopy($srcImg, $fgImg, $x, $topY, 0, 0, $fgW, $fgH);
+
+                return;
             }
         }
 
+        // Fallback to imagettftext
         if ($hasShadow && function_exists('imagettftext') && $fontFile) {
             $offsetY = max(2, (int) round(3.5 * $scale));
             $offsetX = max(1, (int) round(2.0 * $scale));

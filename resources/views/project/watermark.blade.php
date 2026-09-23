@@ -23,6 +23,11 @@
         </div>
 
         <div class="flex items-center gap-2.5">
+            <button type="button" onclick="applyLastWatermarkSetup()" class="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-amber-500/60" title="Apply last saved watermark configuration">
+                <span>✨</span>
+                <span>Use Last Watermark</span>
+            </button>
+
             <button type="button" onclick="resetWatermark()" class="px-3.5 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-300 border border-gray-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>Reset</span>
@@ -772,6 +777,52 @@
         setTimeout(() => {
             toast.remove();
         }, 3000);
+    }
+
+    const lastWatermarkSetup = @json($lastWatermark ?? null);
+
+    function applyLastWatermarkSetup() {
+        if (!lastWatermarkSetup) {
+            showToast('No previous watermark setup found.');
+            return;
+        }
+
+        if (lastWatermarkSetup.type) {
+            setWatermarkType(lastWatermarkSetup.type);
+        }
+        if (lastWatermarkSetup.text !== undefined && document.getElementById('wm-text-input')) {
+            document.getElementById('wm-text-input').value = lastWatermarkSetup.text;
+        }
+        if (lastWatermarkSetup.position) {
+            setPosition(lastWatermarkSetup.position);
+            applyPositionToAllFrames();
+        }
+        if (lastWatermarkSetup.opacity !== undefined && document.getElementById('opacity-slider')) {
+            document.getElementById('opacity-slider').value = lastWatermarkSetup.opacity;
+            const opVal = document.getElementById('opacity-val');
+            if (opVal) opVal.innerText = lastWatermarkSetup.opacity + '%';
+        }
+        if (lastWatermarkSetup.size !== undefined && document.getElementById('size-slider')) {
+            document.getElementById('size-slider').value = lastWatermarkSetup.size;
+            const szVal = document.getElementById('size-val');
+            if (szVal) szVal.innerText = lastWatermarkSetup.size + '%';
+        }
+        const marginInput = document.getElementById('margin-input');
+        if (marginInput && lastWatermarkSetup.margin !== undefined) {
+            marginInput.value = lastWatermarkSetup.margin;
+        }
+        if (lastWatermarkSetup.color && typeof setTextColor === 'function') {
+            setTextColor(lastWatermarkSetup.color);
+        }
+        if (lastWatermarkSetup.has_pill !== undefined && document.getElementById('wm-pill-check')) {
+            document.getElementById('wm-pill-check').checked = !!lastWatermarkSetup.has_pill;
+        }
+        if (lastWatermarkSetup.has_shadow !== undefined && document.getElementById('wm-shadow-check')) {
+            document.getElementById('wm-shadow-check').checked = !!lastWatermarkSetup.has_shadow;
+        }
+
+        updateWatermarkLive();
+        showToast('Applied last saved watermark setup!');
     }
 </script>
 @endsection

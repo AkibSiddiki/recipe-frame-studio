@@ -77,4 +77,44 @@ class AppSettingService
 
         return $result;
     }
+
+    public function getLastCropSetup(?array $default = null): ?array
+    {
+        return $this->get('last_crop_setup', $default);
+    }
+
+    public function setLastCropSetup(array $data): void
+    {
+        $this->set('last_crop_setup', $data);
+    }
+
+    public function getLastWatermarkSetup(?array $default = null): ?array
+    {
+        return $this->get('last_watermark_setup', $default);
+    }
+
+    public function setLastWatermarkSetup(array $data): void
+    {
+        $this->set('last_watermark_setup', $data);
+    }
+
+    public function getLastRecipeStepsSetup(?array $default = null): ?array
+    {
+        return $this->get('last_recipe_steps_setup', $default);
+    }
+
+    public function setLastRecipeStepsSetup(array $data): void
+    {
+        $this->set('last_recipe_steps_setup', $data);
+    }
+
+    public function getLastCollageSetup(?array $default = null): ?array
+    {
+        return $this->get('last_collage_setup', $default);
+    }
+
+    public function setLastCollageSetup(array $data): void
+    {
+        $this->set('last_collage_setup', $data);
+    }
 }

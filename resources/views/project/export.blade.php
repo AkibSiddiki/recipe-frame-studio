@@ -23,6 +23,11 @@
         </div>
 
         <div class="flex items-center gap-2.5">
+            <button type="button" onclick="applyLastCollageSetup()" class="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-amber-500/60" title="Apply last saved collage setup">
+                <span>✨</span>
+                <span>Use Last Setup</span>
+            </button>
+
             <button type="button" onclick="saveCollageSettings(false)" id="save-collage-btn" class="px-4 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-300 border border-gray-700/80 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 <span id="save-collage-text">Save Setup</span>
@@ -656,6 +661,58 @@
         setTimeout(() => {
             toast.remove();
         }, 3000);
+    }
+
+    const lastCollageSetup = @json($lastCollage ?? null);
+
+    function applyLastCollageSetup() {
+        if (!lastCollageSetup) {
+            showToast('No previous collage setup found.');
+            return;
+        }
+
+        Object.assign(config, lastCollageSetup);
+
+        if (lastCollageSetup.layout && typeof setLayout === 'function') {
+            setLayout(lastCollageSetup.layout, false);
+        }
+        if (lastCollageSetup.scale && typeof setScale === 'function') {
+            setScale(lastCollageSetup.scale, false);
+        }
+        if (lastCollageSetup.format && typeof setFormat === 'function') {
+            setFormat(lastCollageSetup.format, false);
+        }
+        if (lastCollageSetup.bg_color && typeof setBgColor === 'function') {
+            setBgColor(lastCollageSetup.bg_color, false);
+        }
+
+        if (document.getElementById('header-check') && lastCollageSetup.header_enabled !== undefined) {
+            document.getElementById('header-check').checked = !!lastCollageSetup.header_enabled;
+        }
+        if (document.getElementById('brand-check') && lastCollageSetup.show_brand !== undefined) {
+            document.getElementById('brand-check').checked = !!lastCollageSetup.show_brand;
+        }
+        if (document.getElementById('footer-check') && lastCollageSetup.footer_enabled !== undefined) {
+            document.getElementById('footer-check').checked = !!lastCollageSetup.footer_enabled;
+        }
+        if (document.getElementById('gap-slider') && lastCollageSetup.gap !== undefined) {
+            document.getElementById('gap-slider').value = lastCollageSetup.gap;
+            const gapVal = document.getElementById('gap-val');
+            if (gapVal) gapVal.innerText = lastCollageSetup.gap + 'px';
+        }
+        if (document.getElementById('padding-slider') && lastCollageSetup.padding !== undefined) {
+            document.getElementById('padding-slider').value = lastCollageSetup.padding;
+            const padVal = document.getElementById('padding-val');
+            if (padVal) padVal.innerText = lastCollageSetup.padding + 'px';
+        }
+        if (document.getElementById('quality-slider') && lastCollageSetup.quality !== undefined) {
+            document.getElementById('quality-slider').value = lastCollageSetup.quality;
+            const qVal = document.getElementById('quality-val');
+            if (qVal) qVal.innerText = lastCollageSetup.quality + '%';
+        }
+
+        renderCollage();
+        showToast('Applied last saved collage setup!');
     }
 </script>
 @endsection

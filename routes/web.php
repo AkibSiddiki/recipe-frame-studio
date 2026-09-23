@@ -42,6 +42,8 @@ Route::get('/project/{slug}/export/download/collage', [ProjectController::class,
 Route::get('/project/{slug}/export/download/zip', [ProjectController::class, 'downloadZip'])->name('project.export.download.zip');
 Route::get('/project/{slug}/export/download/step/{filename}', [ProjectController::class, 'downloadStepCard'])->name('project.export.download.step');
 
+Route::post('/project/{slug}/apply-last-setup/{type}', [ProjectController::class, 'applyLastSetup'])->name('project.apply-last-setup');
+
 Route::get('/projects/recent', [ProjectController::class, 'recent'])->name('projects.recent');
 
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings');

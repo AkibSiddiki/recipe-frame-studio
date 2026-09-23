@@ -279,11 +279,8 @@ class ProjectController extends Controller
             'selectedFrames' => $selectedFrames,
             'allFrames' => $allFrames,
             'presets' => $presets,
-            'currentCrop' => $project['crop'] ?? [
-                'ratio' => '4:5',
-                'preset' => 'facebook-portrait',
-                'default_alignment' => 'center',
-            ],
+            'lastCrop' => $this->projectService->getLastCropSetup(),
+            'currentCrop' => $project['crop'] ?? $this->projectService->getLastCropSetup(),
         ]);
     }
 
@@ -354,33 +351,23 @@ class ProjectController extends Controller
 
         $selectedFrames = $this->projectService->getSelectedFrames($slug);
 
-        $defaultWatermark = config('recipe-studio.watermark', [
-            'enabled' => true,
-            'type' => 'image',
-            'image_path' => 'images/default-watermark.png',
-            'position' => 'bottom-right',
-            'opacity' => 85,
-            'margin' => 30,
-            'size' => 18,
-            'text' => '@RecipeFrameStudio',
-            'color' => '#ffffff',
-            'has_shadow' => false,
-            'has_pill' => true,
-        ]);
+        $lastWatermark = $this->projectService->getLastWatermarkSetup();
+        $defaultWatermark = config('recipe-studio.watermark', $lastWatermark);
 
         $projectWatermark = is_array($project['watermark'] ?? null) ? $project['watermark'] : [];
         if (empty($projectWatermark)) {
-            $projectWatermark = $defaultWatermark;
+            $projectWatermark = $lastWatermark;
         } elseif (($projectWatermark['type'] ?? '') === 'image' && empty($projectWatermark['image_path'])) {
-            $projectWatermark['image_path'] = $defaultWatermark['image_path'] ?? 'images/default-watermark.png';
+            $projectWatermark['image_path'] = $lastWatermark['image_path'] ?? ($defaultWatermark['image_path'] ?? 'images/default-watermark.png');
         }
-        $watermarkConfig = array_merge($defaultWatermark, $projectWatermark);
+        $watermarkConfig = array_merge($defaultWatermark, $lastWatermark, $projectWatermark);
 
         return view('project.watermark', [
             'project' => $project,
             'selectedFrames' => $selectedFrames,
             'allFrames' => $allFrames,
             'watermarkConfig' => $watermarkConfig,
+            'lastWatermark' => $lastWatermark,
         ]);
     }
 
@@ -470,7 +457,12 @@ class ProjectController extends Controller
             if (file_exists($publicPath)) {
                 $fullPath = $publicPath;
             } else {
-                abort(404, 'Watermark logo file not found.');
+                $sharedPath = storage_path('app'.DIRECTORY_SEPARATOR.'watermarks'.DIRECTORY_SEPARATOR.basename($imagePath));
+                if (file_exists($sharedPath)) {
+                    $fullPath = $sharedPath;
+                } else {
+                    abort(404, 'Watermark logo file not found.');
+                }
             }
         }
 
@@ -513,8 +505,9 @@ class ProjectController extends Controller
 
         $selectedFrames = $this->projectService->getSelectedFrames($slug);
         $recipeSteps = $this->projectService->getRecipeSteps($slug);
+        $lastStepStyle = $this->projectService->getLastRecipeStepsSetup();
 
-        return view('project.steps', compact('project', 'selectedFrames', 'recipeSteps'));
+        return view('project.steps', compact('project', 'selectedFrames', 'recipeSteps', 'lastStepStyle'));
     }
 
     public function saveSteps(Request $request, string $slug): JsonResponse|RedirectResponse
@@ -593,8 +586,9 @@ class ProjectController extends Controller
         $selectedFrames = $this->projectService->getSelectedFrames($slug);
         $recipeSteps = $this->projectService->getRecipeSteps($slug);
         $collageConfig = $this->projectService->getCollageSettings($slug);
+        $lastCollage = $this->projectService->getLastCollageSetup();
 
-        return view('project.export', compact('project', 'selectedFrames', 'recipeSteps', 'collageConfig'));
+        return view('project.export', compact('project', 'selectedFrames', 'recipeSteps', 'collageConfig', 'lastCollage'));
     }
 
     public function saveCollage(Request $request, string $slug): JsonResponse|RedirectResponse
@@ -719,5 +713,37 @@ class ProjectController extends Controller
         }
 
         return redirect()->route('home')->with('status', "Project '{$name}' was deleted successfully.");
+    }
+
+    public function applyLastSetup(Request $request, string $slug, string $type): JsonResponse|RedirectResponse
+    {
+        $project = $this->projectService->load($slug);
+        if (! $project) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Project not found'], 404);
+            }
+            abort(404, 'Project not found.');
+        }
+
+        $updatedProject = $this->projectService->applyLastSetupToProject($slug, $type);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Last setup applied successfully.',
+                'project' => $updatedProject,
+                'type' => $type,
+            ]);
+        }
+
+        $route = match ($type) {
+            'crop' => 'project.crop',
+            'watermark' => 'project.watermark',
+            'steps' => 'project.steps',
+            'collage' => 'project.export',
+            default => 'project.show',
+        };
+
+        return redirect()->route($route, $slug)->with('status', 'Last setup applied successfully!');
     }
 }
