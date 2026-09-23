@@ -3,20 +3,21 @@
 @section('content')
 <div class="max-w-7xl mx-auto pb-24">
     <!-- Header & Action Bar -->
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4 animate-fade-in">
         <div>
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-1">
-                <a href="{{ route('project.show', $project['slug']) }}" class="text-gray-400 hover:text-white transition flex items-center gap-1">
-                    <span>📹 Video Source</span>
+                <a href="{{ route('project.show', $project['slug']) }}" class="text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <span>Video Source</span>
                 </a>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Step 2: Frames</span>
-                <span class="text-gray-600">/</span>
-                <a href="{{ route('project.crop', $project['slug']) }}" class="text-gray-500 hover:text-gray-300 transition">
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                <a href="{{ route('project.crop', $project['slug']) }}" class="text-gray-500 hover:text-gray-300 transition-colors">
                     Step 3: Crop
                 </a>
             </div>
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Project Frames' }}</h1>
+            <h1 class="text-3xl font-display font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Project Frames' }}</h1>
             <p class="text-sm text-gray-400 mt-1 flex items-center gap-2">
                 <span>Select high-impact frames to assemble your recipe steps collage.</span>
                 <span class="text-gray-600">•</span>
@@ -25,28 +26,28 @@
         </div>
 
         <div class="flex items-center gap-2.5">
-            <button type="button" onclick="openCaptureModal()" class="px-3.5 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-200 border border-gray-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
-                <span>⏱️</span>
+            <button type="button" onclick="openCaptureModal()" class="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.08] text-gray-200 border border-border-default rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm hover:border-border-hover">
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span>Custom Timestamp</span>
             </button>
 
-            <a href="{{ route('project.show', $project['slug']) }}" class="px-3.5 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-200 border border-gray-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
-                <span>🔄</span>
+            <a href="{{ route('project.show', $project['slug']) }}" class="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.08] text-gray-200 border border-border-default rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm hover:border-border-hover">
+                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>Re-Extract</span>
             </a>
 
-            <button type="button" onclick="goToCropStep()" id="next-step-btn" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
+            <button type="button" onclick="goToCropStep()" id="next-step-btn" class="btn-shine bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition-all shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
                 <span>Next: Crop & Aspect Ratio</span>
-                <span id="selected-badge" class="px-2 py-0.5 rounded-full bg-black/30 text-white text-[11px] font-extrabold border border-white/20">
+                <span id="selected-badge" class="px-2 py-0.5 rounded-full bg-black/30 text-white text-[11px] font-extrabold border border-white/15">
                     {{ count(array_filter($frames, fn($f) => $f['selected'] ?? false)) }} Selected
                 </span>
-                <span>→</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
         </div>
     </div>
 
     @if(session('status'))
-        <div class="mb-6 bg-emerald-950/60 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
+        <div class="mb-6 bg-emerald-950/50 border border-emerald-700/50 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg backdrop-blur-sm animate-slide-up">
             <svg class="w-5 h-5 mr-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
@@ -55,7 +56,7 @@
     @endif
 
     <!-- Controls Toolbar -->
-    <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+    <div class="glass-surface rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-xl">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <span class="text-xs uppercase tracking-wider text-gray-400 font-bold">Selection:</span>
@@ -103,7 +104,7 @@
 
     <!-- Frames Gallery Grid -->
     @if(empty($frames))
-        <div class="bg-[#1a1a2e] border border-dashed border-gray-800 rounded-3xl p-16 text-center shadow-xl">
+        <div class="glass-surface border border-dashed border-border-default rounded-3xl p-16 text-center shadow-xl">
             <div class="text-6xl mb-4">🖼️</div>
             <h3 class="text-xl font-bold text-white mb-2">No Frames Extracted Yet</h3>
             <p class="text-gray-400 max-w-md mx-auto mb-6 text-sm">
@@ -122,7 +123,7 @@
             $isVertical = !empty($project['video']['is_vertical']);
             $cardAspectClass = $isVertical ? 'aspect-[4/5]' : 'aspect-video';
         @endphp
-        <div id="frames-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div id="frames-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 stagger-children">
             @foreach($frames as $index => $frame)
                 @php
                     $isSelected = !empty($frame['selected']);
@@ -130,7 +131,7 @@
                     $frameId = $frame['id'] ?? $frameFilename;
                     $imageUrl = route('project.frame.image', ['slug' => $project['slug'], 'filename' => $frameFilename]);
                 @endphp
-                <div class="frame-card group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 bg-[#16213e] shadow-lg hover:shadow-2xl hover:-translate-y-1 cursor-pointer select-none {{ $isSelected ? 'border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.22)] ring-2 ring-amber-500/30 bg-[#1b2545]' : 'border-gray-800/80 hover:border-gray-600' }}"
+                <div class="frame-card group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 bg-surface-raised shadow-lg hover:shadow-2xl hover:-translate-y-1 cursor-pointer select-none {{ $isSelected ? 'border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.22)] ring-2 ring-amber-500/30 bg-surface-overlay' : 'border-border-default hover:border-border-hover' }}"
                      data-frame-id="{{ $frameId }}"
                      data-filename="{{ $frameFilename }}"
                      data-image-url="{{ $imageUrl }}"
@@ -175,7 +176,7 @@
                     </div>
 
                     <!-- Card Footer Info Bar -->
-                    <div class="p-3 bg-[#121a30] border-t border-gray-800/60 flex items-center justify-between text-xs">
+                    <div class="p-3 bg-surface-base/80 border-t border-border-subtle flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full {{ $isSelected ? 'bg-amber-400 animate-pulse' : 'bg-gray-600' }}"></span>
                             <span class="font-medium text-gray-300 status-label">
@@ -207,7 +208,7 @@
 </div>
 
 <!-- Floating Bottom Sticky Bar -->
-<div id="sticky-bottom-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#16213e]/95 backdrop-blur-md border border-amber-500/40 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-6 transition-all duration-300 {{ count(array_filter($frames, fn($f) => $f['selected'] ?? false)) > 0 ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none' }}">
+<div id="sticky-bottom-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 glass-surface border-amber-500/30 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-6 transition-all duration-300 {{ count(array_filter($frames, fn($f) => $f['selected'] ?? false)) > 0 ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none' }}">
     <div class="flex items-center gap-3">
         <span class="w-3 h-3 rounded-full bg-amber-500 animate-ping"></span>
         <span class="text-sm font-bold text-white">
@@ -215,7 +216,7 @@
         </span>
     </div>
 
-    <button type="button" onclick="goToCropStep()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2 rounded-xl text-xs font-bold tracking-wide transition shadow-md flex items-center gap-2">
+    <button type="button" onclick="goToCropStep()" class="btn-shine bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-5 py-2 rounded-xl text-xs font-bold tracking-wide transition-all shadow-lg shadow-amber-900/30 flex items-center gap-2">
         <span>Proceed to Step 3: Crop</span>
         <span>→</span>
     </button>
@@ -250,8 +251,8 @@
 </div>
 
 <!-- Custom Timestamp Capture Modal -->
-<div id="capture-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-[#1a1a2e] border border-gray-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+<div id="capture-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 modal-backdrop" onclick="if(event.target===this)closeCaptureModal()">
+    <div class="glass-surface border-border-default rounded-2xl max-w-sm w-full p-6 shadow-2xl modal-content">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-base font-bold text-white flex items-center gap-2">
                 <span>⏱️</span>

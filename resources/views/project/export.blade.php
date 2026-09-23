@@ -7,24 +7,24 @@
         <div>
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-1">
                 <a href="{{ route('project.steps', $project['slug']) }}" class="text-gray-400 hover:text-white transition flex items-center gap-1">
-                    <span>← Recipe Steps</span>
+                    <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> <span>Recipe Steps</span>
                 </a>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Step 6: Export & Collage Studio</span>
-                <span class="text-gray-600">•</span>
+                <span class="text-gray-600">·</span>
                 <span class="text-gray-400">Final Publishing</span>
             </div>
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Recipe Collage' }}</h1>
+            <h1 class="text-3xl font-display font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Recipe Collage' }}</h1>
             <p class="text-sm text-gray-400 mt-1 flex items-center gap-2">
                 <span>Stitch your step cards into composite recipe infographics or download all cards as a ZIP bundle.</span>
-                <span class="text-gray-600">•</span>
+                <span class="text-gray-600">·</span>
                 <span class="text-gray-300 font-mono text-xs">{{ count($selectedFrames) }} step cards ready</span>
             </p>
         </div>
 
         <div class="flex items-center gap-2.5">
             <button type="button" onclick="saveCollageSettings(false)" id="save-collage-btn" class="px-4 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-300 border border-gray-700/80 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
-                <span>💾</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 <span id="save-collage-text">Save Setup</span>
             </button>
 
@@ -33,7 +33,7 @@
                 <span>Download ZIP Bundle</span>
             </a>
 
-            <a href="{{ route('project.export.download.collage', $project['slug']) }}" id="collage-download-btn" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-emerald-950/40 flex items-center gap-2 active:scale-95">
+            <a href="{{ route('project.export.download.collage', $project['slug']) }}" id="collage-download-btn" class="btn-shine bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-emerald-950/40 flex items-center gap-2 active:scale-95">
                 <span>📥</span>
                 <span>Download Collage</span>
             </a>
@@ -41,7 +41,7 @@
     </div>
 
     @if(session('status'))
-        <div class="mb-6 bg-emerald-950/60 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
+        <div class="mb-6 bg-emerald-950/50 border border-emerald-700/50 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
             <svg class="w-5 h-5 mr-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
@@ -50,12 +50,12 @@
     @endif
 
     @if(count($selectedFrames) === 0)
-        <div class="bg-[#1a1a2e] border border-amber-900/40 rounded-3xl p-12 text-center max-w-xl mx-auto my-12">
+        <div class="bg-surface-overlay border border-amber-900/40 rounded-3xl p-12 text-center max-w-xl mx-auto my-12">
             <div class="text-4xl mb-4">🖼️</div>
             <h2 class="text-xl font-bold text-white mb-2">No Step Cards Available</h2>
             <p class="text-gray-400 text-sm mb-6">You need to select candidate frames and configure steps before exporting your recipe collage.</p>
             <a href="{{ route('project.frames', $project['slug']) }}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-lg shadow-amber-900/40">
-                <span>← Return to Frames Selector</span>
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> <span>Return to Frames Selector</span>
             </a>
         </div>
     @else
@@ -64,8 +64,8 @@
             <!-- Left Panel: Controls & Options (5 cols) -->
             <div class="lg:col-span-5 flex flex-col gap-6">
                 <!-- 1. Layout Preset Selection -->
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl">
-                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800/60">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-subtle">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">📐</span>
                             <h2 class="text-sm font-bold text-white uppercase tracking-wider">Collage Grid Layout</h2>
@@ -119,8 +119,8 @@
                 </div>
 
                 <!-- 2. Header Branding & Recipe Info -->
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-gray-800/60">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🏷️</span>
                             <h2 class="text-sm font-bold text-white uppercase tracking-wider">Collage Header Banner</h2>
@@ -160,8 +160,8 @@
                 </div>
 
                 <!-- 3. Collage Styling & Spacing -->
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-xs">
-                    <div class="flex items-center justify-between pb-3 border-b border-gray-800/60">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-xs">
+                    <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🎨</span>
                             <h2 class="text-sm font-bold text-white uppercase tracking-wider">Styling & Spacing</h2>
@@ -200,7 +200,7 @@
                     </div>
 
                     <!-- Export Resolution & Format -->
-                    <div class="grid grid-cols-2 gap-4 pt-3 border-t border-gray-800/60">
+                    <div class="grid grid-cols-2 gap-4 pt-3 border-t border-border-subtle">
                         <div>
                             <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Resolution Scale</label>
                             <div class="grid grid-cols-2 gap-1.5">
@@ -222,9 +222,9 @@
 
             <!-- Right Panel: Live Collage Canvas Viewport (7 cols) -->
             <div class="lg:col-span-7 flex flex-col gap-4">
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between min-h-[640px] relative">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between min-h-[640px] relative">
                     <!-- Top Bar Info -->
-                    <div class="w-full flex items-center justify-between pb-3 mb-3 border-b border-gray-800/80 text-xs">
+                    <div class="w-full flex items-center justify-between pb-3 mb-3 border-b border-border-default text-xs">
                         <div class="flex items-center gap-3">
                             <span class="font-bold text-white text-sm">Collage Live Preview</span>
                             <span class="px-2 py-0.5 rounded-lg bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 text-[10px] font-mono flex items-center gap-1">
@@ -238,7 +238,7 @@
                     </div>
 
                     <!-- Canvas Viewport -->
-                    <div class="relative w-full flex-1 flex items-center justify-center p-3 rounded-2xl bg-[#0b0f19] border border-gray-800/60 overflow-hidden shadow-inner group">
+                    <div class="relative w-full flex-1 flex items-center justify-center p-3 rounded-2xl bg-[#0b0f19] border border-border-subtle overflow-hidden shadow-inner group">
                         <canvas id="collage-canvas" class="max-w-full max-h-[580px] object-contain rounded-xl shadow-2xl transition duration-200"></canvas>
 
                         <!-- Loading Indicator -->
@@ -252,7 +252,7 @@
                     </div>
 
                     <!-- Bottom Individual Step Cards Strip & Download Links -->
-                    <div class="w-full mt-4 pt-3 border-t border-gray-800/80">
+                    <div class="w-full mt-4 pt-3 border-t border-border-default">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Individual Step Cards (Multi-Card Carousel)</span>
                             <span class="text-[11px] text-gray-500">Download single cards for Instagram/TikTok</span>
@@ -260,7 +260,7 @@
 
                         <div class="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
                             @foreach($selectedFrames as $index => $frame)
-                                <div class="relative shrink-0 rounded-xl border border-gray-800 bg-[#12192b] overflow-hidden group w-24">
+                                <div class="relative shrink-0 rounded-xl border border-gray-800 bg-surface-base overflow-hidden group w-24">
                                     <div class="aspect-square bg-gray-950 overflow-hidden relative">
                                         <img src="{{ route('project.frame.step-image', ['slug' => $project['slug'], 'filename' => $frame['filename']]) }}" 
                                              class="w-full h-full object-cover group-hover:scale-105 transition"

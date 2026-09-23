@@ -7,41 +7,41 @@
         <div>
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-1">
                 <a href="{{ route('project.watermark', $project['slug']) }}" class="text-gray-400 hover:text-white transition flex items-center gap-1">
-                    <span>← Watermark & Branding</span>
+                    <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> <span>Watermark & Branding</span>
                 </a>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Step 5: Recipe Steps & Text Overlays</span>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-gray-500">Step 6: Export & Collage</span>
             </div>
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Recipe Steps' }}</h1>
+            <h1 class="text-3xl font-display font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Recipe Steps' }}</h1>
             <p class="text-sm text-gray-400 mt-1 flex items-center gap-2">
                 <span>Add step numbers, culinary instructions, and ingredient notes over your candidate frames.</span>
-                <span class="text-gray-600">•</span>
+                <span class="text-gray-600">·</span>
                 <span class="text-gray-300 font-mono text-xs">{{ count($selectedFrames) }} frames selected</span>
             </p>
         </div>
 
         <div class="flex items-center gap-2.5">
             <button type="button" onclick="resetAllSteps()" class="px-3.5 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-300 border border-gray-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
-                <span>↺</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>Reset Defaults</span>
             </button>
 
             <button type="button" onclick="saveSteps(false)" id="save-steps-btn" class="px-4 py-2 bg-gray-800/90 hover:bg-gray-750 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:border-amber-500/60">
-                <span>💾</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 <span id="save-steps-text">Save Steps</span>
             </button>
 
-            <button type="button" onclick="saveAndProceed()" id="proceed-btn" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
+            <button type="button" onclick="saveAndProceed()" id="proceed-btn" class="btn-shine bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
                 <span>Next: Export & Collage (Step 6)</span>
-                <span>→</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
         </div>
     </div>
 
     @if(session('status'))
-        <div class="mb-6 bg-emerald-950/60 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
+        <div class="mb-6 bg-emerald-950/50 border border-emerald-700/50 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
             <svg class="w-5 h-5 mr-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
@@ -50,12 +50,12 @@
     @endif
 
     @if(count($selectedFrames) === 0)
-        <div class="bg-[#1a1a2e] border border-amber-900/40 rounded-3xl p-12 text-center max-w-xl mx-auto my-12">
+        <div class="bg-surface-overlay border border-amber-900/40 rounded-3xl p-12 text-center max-w-xl mx-auto my-12">
             <div class="text-4xl mb-4">🖼️</div>
             <h2 class="text-xl font-bold text-white mb-2">No Frames Selected</h2>
             <p class="text-gray-400 text-sm mb-6">You need to select at least one video frame to build recipe steps and text overlays.</p>
             <a href="{{ route('project.frames', $project['slug']) }}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-lg shadow-amber-900/40">
-                <span>← Return to Frames Selector</span>
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> <span>Return to Frames Selector</span>
             </a>
         </div>
     @else
@@ -64,8 +64,8 @@
             <!-- Left Panel: Global Styling & Step Content Cards (5 cols) -->
             <div class="lg:col-span-5 flex flex-col gap-6">
                 <!-- 1. Global Styling & Overlay Theme -->
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl">
-                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800/60">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-subtle">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🎨</span>
                             <h2 class="text-sm font-bold text-white uppercase tracking-wider">Overlay Style & Layout</h2>
@@ -114,7 +114,7 @@
                     </div>
 
                     <!-- Styling Controls Grid -->
-                    <div class="grid grid-cols-2 gap-4 pt-3 border-t border-gray-800/60 text-xs">
+                    <div class="grid grid-cols-2 gap-4 pt-3 border-t border-border-subtle text-xs">
                         <!-- Background Opacity -->
                         <div>
                             <div class="flex justify-between items-center mb-1">
@@ -159,7 +159,7 @@
                     </div>
 
                     <!-- Toggles -->
-                    <div class="mt-4 pt-3 border-t border-gray-800/60 flex items-center justify-between">
+                    <div class="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between">
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
                             <input type="checkbox" id="show-badge-checkbox" checked onchange="updateLive()" class="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-amber-500 w-4 h-4">
                             <span>Display numbered step badge (e.g. <b>#01</b>)</span>
@@ -168,8 +168,8 @@
                 </div>
 
                 <!-- 2. Step Items Editor (Accordion / Stack) -->
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-gray-800/60 gap-2">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-border-subtle gap-2">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">📝</span>
                             <h2 class="text-sm font-bold text-white uppercase tracking-wider">Step Instructions</h2>
@@ -194,7 +194,7 @@
                                       ?? collect($selectedFrames)->firstWhere('id', $step['frame_id'])
                                       ?? ($selectedFrames[$idx] ?? null);
                             @endphp
-                            <div class="step-card bg-[#141b2d] border border-gray-800/80 rounded-2xl p-4 transition-all duration-200" 
+                            <div class="step-card bg-[#141b2d] border border-border-default rounded-2xl p-4 transition-all duration-200" 
                                  id="step-card-{{ $idx }}" 
                                  data-index="{{ $idx }}"
                                  onclick="selectStep({{ $idx }})">
@@ -246,9 +246,9 @@
 
             <!-- Right Panel: Live Composite Canvas & Step Card Preview (7 cols) -->
             <div class="lg:col-span-7 flex flex-col gap-4">
-                <div class="bg-[#1a1a2e]/95 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between min-h-[600px] relative">
+                <div class="glass-surface rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between min-h-[600px] relative">
                     <!-- Preview Top Bar -->
-                    <div class="w-full flex items-center justify-between pb-3 mb-3 border-b border-gray-800/80 text-xs">
+                    <div class="w-full flex items-center justify-between pb-3 mb-3 border-b border-border-default text-xs">
                         <div class="flex items-center gap-3">
                             <span class="font-bold text-white text-sm" id="active-step-label">Step #01 Preview</span>
                             <span class="px-2 py-0.5 rounded-lg bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 text-[10px] font-mono flex items-center gap-1">
@@ -262,7 +262,7 @@
                     </div>
 
                     <!-- Canvas Viewport -->
-                    <div class="relative w-full flex-1 flex items-center justify-center p-2 rounded-2xl bg-[#0b0f19] border border-gray-800/60 overflow-hidden shadow-inner group">
+                    <div class="relative w-full flex-1 flex items-center justify-center p-2 rounded-2xl bg-[#0b0f19] border border-border-subtle overflow-hidden shadow-inner group">
                         <canvas id="step-canvas" class="max-w-full max-h-[520px] object-contain rounded-xl shadow-2xl transition duration-200"></canvas>
                         
                         <!-- Loading Indicator -->
@@ -276,7 +276,7 @@
                     </div>
 
                     <!-- Bottom Frame Carousel Thumbnails -->
-                    <div class="w-full mt-4 pt-3 border-t border-gray-800/80">
+                    <div class="w-full mt-4 pt-3 border-t border-border-default">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Select Frame to Preview</span>
                             <span class="text-[11px] text-gray-500">Click any card to edit its recipe step</span>
@@ -296,7 +296,7 @@
                                             #{{ sprintf('%02d', $index + 1) }}
                                         </div>
                                     </div>
-                                    <div class="p-1 bg-[#12192b] text-[9px] font-semibold text-center text-gray-300 truncate">
+                                    <div class="p-1 bg-surface-base text-[9px] font-semibold text-center text-gray-300 truncate">
                                         Step {{ $index + 1 }}
                                     </div>
                                 </div>
@@ -374,11 +374,11 @@
         document.querySelectorAll('.step-card').forEach((el, i) => {
             if (i === index) {
                 el.classList.add('border-amber-500', 'ring-2', 'ring-amber-500/30', 'bg-[#18233c]');
-                el.classList.remove('border-gray-800/80', 'bg-[#141b2d]');
+                el.classList.remove('border-border-default', 'bg-[#141b2d]');
                 el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } else {
                 el.classList.remove('border-amber-500', 'ring-2', 'ring-amber-500/30', 'bg-[#18233c]');
-                el.classList.add('border-gray-800/80', 'bg-[#141b2d]');
+                el.classList.add('border-border-default', 'bg-[#141b2d]');
             }
         });
 

@@ -7,41 +7,41 @@
         <div>
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-1">
                 <a href="{{ route('project.crop', $project['slug']) }}" class="text-gray-400 hover:text-white transition flex items-center gap-1">
-                    <span>← Crop & Framing</span>
+                    <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> <span>Crop & Framing</span>
                 </a>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Step 4: Watermark & Branding</span>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-gray-500">Step 5: Recipe Steps</span>
             </div>
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Watermark Studio' }}</h1>
+            <h1 class="text-3xl font-display font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Watermark Studio' }}</h1>
             <p class="text-sm text-gray-400 mt-1 flex items-center gap-2">
                 <span>Protect and brand your recipe step cards with your logo or social handle.</span>
-                <span class="text-gray-600">•</span>
+                <span class="text-gray-600">·</span>
                 <span class="text-gray-300 font-mono text-xs">{{ count($selectedFrames) }} frames in collage</span>
             </p>
         </div>
 
         <div class="flex items-center gap-2.5">
             <button type="button" onclick="resetWatermark()" class="px-3.5 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-300 border border-gray-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
-                <span>↺</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>Reset</span>
             </button>
 
             <button type="button" onclick="saveWatermark(false)" id="save-wm-btn" class="px-4 py-2 bg-gray-800/90 hover:bg-gray-750 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:border-amber-500/60">
-                <span>💾</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 <span id="save-wm-text">Save Watermark</span>
             </button>
 
-            <button type="button" onclick="saveAndProceed()" id="proceed-btn" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
+            <button type="button" onclick="saveAndProceed()" id="proceed-btn" class="btn-shine bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
                 <span>Next: Recipe Steps (Step 5)</span>
-                <span>→</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
         </div>
     </div>
 
     @if(session('status'))
-        <div class="mb-6 bg-emerald-950/60 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
+        <div class="mb-6 bg-emerald-950/50 border border-emerald-700/50 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
             <svg class="w-5 h-5 mr-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
@@ -52,7 +52,7 @@
     <!-- Main Watermark Studio Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
         <!-- Left Panel: Watermark Customization Controls (5 cols) -->
-        <div class="lg:col-span-5 bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
+        <div class="lg:col-span-5 glass-surface rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
             <!-- 1. Watermark Type Selector -->
             <div>
                 <label class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-2.5">Watermark Format</label>
@@ -78,17 +78,17 @@
             <div id="section-text-options" class="flex flex-col gap-4">
                 <div>
                     <label for="wm-text-input" class="block text-xs font-semibold text-gray-300 mb-1.5">Brand Text / Social Handle</label>
-                    <input type="text" id="wm-text-input" value="{{ $watermarkConfig['text'] ?? '@RecipeFrameStudio' }}" placeholder="e.g. @YourKitchenName" class="block w-full bg-[#12192b] border border-gray-700/80 rounded-xl text-gray-100 text-sm px-4 py-2.5 font-medium focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-inner">
+                    <input type="text" id="wm-text-input" value="{{ $watermarkConfig['text'] ?? '@RecipeFrameStudio' }}" placeholder="e.g. @YourKitchenName" class="block w-full bg-surface-base border border-gray-700/80 rounded-xl text-gray-100 text-sm px-4 py-2.5 font-medium focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-inner">
                 </div>
 
                 <!-- Text Style / Contrast Shield -->
                 <div class="grid grid-cols-2 gap-3">
-                    <label class="flex items-center gap-2.5 p-3 rounded-xl bg-[#12192b] border border-gray-800 cursor-pointer hover:border-gray-700 transition">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl bg-surface-base border border-gray-800 cursor-pointer hover:border-gray-700 transition">
                         <input type="checkbox" id="wm-pill-check" {{ !empty($watermarkConfig['has_pill']) ? 'checked' : '' }} onchange="updateWatermarkLive()" class="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-gray-900 border-gray-700">
                         <span class="text-xs text-gray-200 font-semibold select-none">Contrast Pill</span>
                     </label>
 
-                    <label class="flex items-center gap-2.5 p-3 rounded-xl bg-[#12192b] border border-gray-800 cursor-pointer hover:border-gray-700 transition">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl bg-surface-base border border-gray-800 cursor-pointer hover:border-gray-700 transition">
                         <input type="checkbox" id="wm-shadow-check" {{ !empty($watermarkConfig['has_shadow']) ? 'checked' : '' }} onchange="updateWatermarkLive()" class="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-gray-900 border-gray-700">
                         <span class="text-xs text-gray-200 font-semibold select-none">Drop Shadow</span>
                     </label>
@@ -114,7 +114,7 @@
                     <button type="button" onclick="resetToDefaultLogo()" class="text-[11px] text-amber-400 hover:text-amber-300 underline cursor-pointer">Use Default Logo</button>
                 </div>
                 
-                <div id="logo-dropzone" onclick="document.getElementById('logo-file-input').click()" class="border-2 border-dashed border-gray-700 hover:border-amber-500/70 rounded-2xl p-5 text-center cursor-pointer transition bg-[#12192b]/50 group">
+                <div id="logo-dropzone" onclick="document.getElementById('logo-file-input').click()" class="border-2 border-dashed border-gray-700 hover:border-amber-500/70 rounded-2xl p-5 text-center cursor-pointer transition bg-surface-base/50 group">
                     <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" onchange="handleLogoUpload(this.files)">
                     
                     <div id="logo-preview-box" class="{{ !empty($watermarkConfig['image_path']) ? '' : 'hidden' }} mb-2">
@@ -199,7 +199,7 @@
                                value="{{ $watermarkConfig['margin'] ?? 30 }}" 
                                oninput="updateWatermarkLive()" 
                                placeholder="30" 
-                               class="w-full bg-[#12192b] border border-gray-700/80 rounded-xl text-amber-400 font-mono text-sm px-4 py-2.5 pr-12 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-inner">
+                               class="w-full bg-surface-base border border-gray-700/80 rounded-xl text-amber-400 font-mono text-sm px-4 py-2.5 pr-12 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-inner">
                         <span class="absolute right-4 text-xs text-gray-400 font-mono font-bold pointer-events-none">px</span>
                     </div>
                     <div class="flex items-center justify-between mt-1.5 text-[11px] text-gray-500">
@@ -218,14 +218,14 @@
         <!-- Right Panel: Live Composite Viewport & Tips (7 cols) -->
         <div class="lg:col-span-7 flex flex-col gap-6">
             <!-- Live Preview Viewport -->
-            <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-6 shadow-2xl flex flex-col">
+            <div class="glass-surface rounded-3xl p-6 shadow-2xl flex flex-col">
                 <div class="flex items-center justify-between mb-3 text-xs text-gray-400">
                     <div class="flex items-center gap-2">
                         <span class="font-bold text-white">Live Composite Preview</span>
-                        <span class="text-gray-600">•</span>
+                        <span class="text-gray-600">·</span>
                         <span id="active-frame-label" class="font-mono text-amber-400">Frame #1</span>
                     </div>
-                    <span class="px-2.5 py-0.5 rounded-lg bg-[#12192b] border border-gray-800 font-mono text-[11px] text-gray-300" id="wm-status-tag">
+                    <span class="px-2.5 py-0.5 rounded-lg bg-surface-base border border-gray-800 font-mono text-[11px] text-gray-300" id="wm-status-tag">
                         Watermark Active
                     </span>
                 </div>
@@ -243,7 +243,7 @@
             </div>
 
             <!-- Recipe Branding Advice Card -->
-            <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-5 shadow-2xl flex items-center gap-4">
+            <div class="glass-surface rounded-3xl p-5 shadow-2xl flex items-center gap-4">
                 <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl shrink-0">
                     💡
                 </div>
@@ -256,7 +256,7 @@
     </div>
 
     <!-- Bottom Frame Switcher (Check across backgrounds) -->
-    <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-5 shadow-2xl">
+    <div class="glass-surface rounded-3xl p-5 shadow-2xl">
         <div class="flex items-center justify-between mb-3 px-1">
             <div class="flex items-center gap-2">
                 <span class="text-xs font-bold text-white uppercase tracking-wider">Test Against Frames ({{ count($selectedFrames) }})</span>
@@ -277,19 +277,19 @@
                 <div onclick="selectPreviewFrame('{{ $frameId }}', '{{ $imageUrl }}', '{{ $index + 1 }}')" 
                      id="thumb-card-{{ $frameId }}"
                      data-frame-id="{{ $frameId }}"
-                     class="frame-thumb-card relative shrink-0 w-36 cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300 group bg-[#16213e] hover:border-amber-500/70 border-gray-800 shadow-md hover:shadow-xl hover:-translate-y-0.5">
+                     class="frame-thumb-card relative shrink-0 w-36 cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300 group bg-surface-raised hover:border-amber-500/70 border-gray-800 shadow-md hover:shadow-xl hover:-translate-y-0.5">
                     
                     <div class="aspect-video w-full overflow-hidden bg-black relative">
                         <img src="{{ $imageUrl }}" 
                              alt="Frame {{ $index + 1 }}" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         
-                        <div class="absolute top-1.5 left-1.5 bg-black/85 px-1.5 py-0.5 rounded text-[10px] font-extrabold text-white backdrop-blur shadow">
+                        <div class="absolute top-1.5 left-1.5 bg-black/85 px-1.5 py-0.5 rounded text-[10px] font-display font-extrabold text-white backdrop-blur shadow">
                             #{{ sprintf('%02d', $index + 1) }}
                         </div>
                     </div>
 
-                    <div class="p-2 bg-[#12192b] flex items-center justify-between text-[11px]">
+                    <div class="p-2 bg-surface-base flex items-center justify-between text-[11px]">
                         <div>
                             <span class="text-gray-300 font-semibold block truncate max-w-[70px]">Step {{ $index + 1 }}</span>
                             <span class="text-gray-500 font-mono text-[9px]">{{ $frame['formatted_time'] ?? '' }}</span>
@@ -384,10 +384,10 @@
 
         document.querySelectorAll('.frame-thumb-card').forEach(el => {
             if (el.dataset.frameId === frameId) {
-                el.classList.add('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-[#1b2545]');
+                el.classList.add('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-surface-overlay');
                 el.classList.remove('border-gray-800');
             } else {
-                el.classList.remove('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-[#1b2545]');
+                el.classList.remove('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-surface-overlay');
                 el.classList.add('border-gray-800');
             }
         });

@@ -4,25 +4,279 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* ── Design Tokens ── */
 @theme {
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+
+    --color-surface-base: #0b1120;
+    --color-surface-raised: #131b2e;
+    --color-surface-overlay: #182038;
+    --color-surface-glass: rgba(22, 33, 62, 0.7);
+
+    --color-border-default: rgba(148, 163, 184, 0.12);
+    --color-border-subtle: rgba(148, 163, 184, 0.06);
+    --color-border-hover: rgba(148, 163, 184, 0.22);
+
+    --color-brand-warm: #f59e0b;
+    --color-brand-glow: rgba(245, 158, 11, 0.15);
+
+    --animate-fade-in: fade-in 0.4s ease-out both;
+    --animate-slide-up: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    --animate-scale-in: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    --animate-shimmer: shimmer 2s linear infinite;
+    --animate-glow-pulse: glow-pulse 2.5s ease-in-out infinite;
+    --animate-float: float 3s ease-in-out infinite;
+    --animate-shine: shine 1.5s ease-in-out;
 }
 
-/* Custom dark desktop scrollbars */
+/* ── Keyframes ── */
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.15), 0 0 24px rgba(245, 158, 11, 0.05); }
+    50% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+@keyframes shine {
+    0% { background-position: -100% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ── Scrollbars ── */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 4px;
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 99px;
+    transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: rgba(100, 116, 139, 0.55);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* ── Selection ── */
+::selection {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fff;
+}
+
+/* ── Focus Ring Utility ── */
+*:focus-visible {
+    outline: 2px solid rgba(245, 158, 11, 0.5);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* ── Glass Surface ── */
+.glass-surface {
+    background: rgba(22, 33, 62, 0.65);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.glass-surface-light {
+    background: rgba(30, 41, 70, 0.5);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    border: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+/* ── Gradient Text ── */
+.text-gradient-brand {
+    background: linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #f97316 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Button Shine Effect ── */
+.btn-shine {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-shine:hover::after {
+    left: 100%;
+}
+
+/* ── Card Hover Lift ── */
+.card-hover-lift {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.card-hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
+/* ── Modal Overlay Animation ── */
+.modal-backdrop {
+    animation: fade-in 0.2s ease-out both;
+}
+
+.modal-content {
+    animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Staggered Children Animation ── */
+.stagger-children > * {
+    animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.26s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.30s; }
+.stagger-children > *:nth-child(9) { animation-delay: 0.34s; }
+.stagger-children > *:nth-child(10) { animation-delay: 0.38s; }
+.stagger-children > *:nth-child(11) { animation-delay: 0.42s; }
+.stagger-children > *:nth-child(12) { animation-delay: 0.46s; }
+
+/* ── Shimmer Skeleton ── */
+.skeleton-shimmer {
+    background: linear-gradient(90deg, rgba(30,41,60,0.4) 0%, rgba(50,65,90,0.5) 50%, rgba(30,41,60,0.4) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+    border-radius: 8px;
+}
+
+/* ── Range Input (Amber) ── */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    height: 24px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 99px;
+    background: linear-gradient(to right, rgba(245,158,11,0.3), rgba(245,158,11,0.1));
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #f59e0b;
+    border: 2px solid #0b1120;
+    margin-top: -6px;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
+    transform: scale(1.15);
+}
+
+/* ── Form Inputs ── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+textarea,
+select {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1), 0 0 12px rgba(245, 158, 11, 0.08);
+    outline: none;
+}
+
+/* ── Page Content Animation ── */
+.page-content-enter {
+    animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Sidebar Step Active Indicator ── */
+.sidebar-step-active {
+    position: relative;
+}
+
+.sidebar-step-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    border-radius: 0 99px 99px 0;
+    background: linear-gradient(to bottom, #f59e0b, #f97316);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+/* ── Decorative dot grid pattern ── */
+.dot-pattern {
+    background-image: radial-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
 }

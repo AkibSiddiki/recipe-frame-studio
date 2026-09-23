@@ -7,41 +7,41 @@
         <div>
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-1">
                 <a href="{{ route('project.frames', $project['slug']) }}" class="text-gray-400 hover:text-white transition flex items-center gap-1">
-                    <span>← Frames Gallery</span>
+                    <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> <span>Frames Gallery</span>
                 </a>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Step 3: Crop & Framing</span>
-                <span class="text-gray-600">/</span>
+                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 <span class="text-gray-500">Step 4: Watermark</span>
             </div>
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Crop Frames' }}</h1>
+            <h1 class="text-3xl font-display font-extrabold text-white tracking-tight">{{ $project['name'] ?? 'Crop Frames' }}</h1>
             <p class="text-sm text-gray-400 mt-1 flex items-center gap-2">
                 <span>Fine-tune aspect ratio and composition for each recipe step.</span>
-                <span class="text-gray-600">•</span>
+                <span class="text-gray-600">·</span>
                 <span class="text-gray-300 font-mono text-xs">{{ count($selectedFrames) }} frames in layout</span>
             </p>
         </div>
 
         <div class="flex items-center gap-2.5">
             <button type="button" onclick="resetCurrentCrop()" class="px-3.5 py-2 bg-gray-800/90 hover:bg-gray-750 text-gray-300 border border-gray-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm hover:border-gray-600">
-                <span>↺</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>Reset Framing</span>
             </button>
 
             <button type="button" onclick="saveAllCrops(false)" id="save-btn" class="px-4 py-2 bg-gray-800/90 hover:bg-gray-750 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:border-amber-500/60">
-                <span>💾</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 <span id="save-btn-text">Save Framing</span>
             </button>
 
-            <button type="button" onclick="saveAndProceed()" id="proceed-btn" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
+            <button type="button" onclick="saveAndProceed()" id="proceed-btn" class="btn-shine bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-amber-900/30 flex items-center gap-2 active:scale-95">
                 <span>Next: Watermark (Step 4)</span>
-                <span>→</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
         </div>
     </div>
 
     @if(session('status'))
-        <div class="mb-6 bg-emerald-950/60 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
+        <div class="mb-6 bg-emerald-950/50 border border-emerald-700/50 text-emerald-300 px-4 py-3 rounded-xl flex items-center shadow-lg">
             <svg class="w-5 h-5 mr-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
@@ -50,7 +50,7 @@
     @endif
 
     <!-- Aspect Ratio & Batch Alignment Toolbar -->
-    <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-2xl p-4 mb-6 shadow-xl flex flex-wrap items-center justify-between gap-4">
+    <div class="glass-surface rounded-2xl p-4 mb-6 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <!-- Preset Ratio Buttons -->
         <div class="flex flex-wrap items-center gap-2">
             <span class="text-xs uppercase tracking-wider text-gray-400 font-bold mr-1">Aspect Ratio:</span>
@@ -84,7 +84,7 @@
 
         <!-- Alignment & Batch Controls -->
         <div class="flex items-center gap-3">
-            <div class="flex items-center gap-1 bg-[#12192b] p-1 rounded-xl border border-gray-800 text-xs">
+            <div class="flex items-center gap-1 bg-surface-base p-1 rounded-xl border border-gray-800 text-xs">
                 <span class="text-gray-400 px-2 font-medium">Align:</span>
                 <button type="button" onclick="alignActiveCrop('top')" class="px-2.5 py-1 rounded-lg hover:bg-gray-800 text-gray-300 transition font-medium" title="Align to Top">
                     ⬆️ Top
@@ -107,16 +107,16 @@
     <!-- Main Workspace (Cropper + Live Preview) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <!-- Interactive Cropper (2 cols) -->
-        <div class="lg:col-span-2 bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-5 shadow-2xl flex flex-col">
+        <div class="lg:col-span-2 glass-surface rounded-3xl p-5 shadow-2xl flex flex-col">
             <div class="flex items-center justify-between mb-3 text-xs text-gray-400">
                 <div class="flex items-center gap-2">
                     <span class="font-bold text-white">Active Frame:</span>
                     <span id="active-frame-name" class="font-mono text-amber-400 font-semibold truncate max-w-[200px]">Loading...</span>
-                    <span class="text-gray-600">•</span>
+                    <span class="text-gray-600">·</span>
                     <span id="active-frame-time" class="text-gray-300 font-mono">00:00</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="font-mono text-[11px] bg-[#12192b] px-2.5 py-1 rounded-lg border border-gray-800 text-gray-300 font-semibold" id="crop-coords-label">
+                    <span class="font-mono text-[11px] bg-surface-base px-2.5 py-1 rounded-lg border border-gray-800 text-gray-300 font-semibold" id="crop-coords-label">
                         X: 0, Y: 0 | 0 × 0 px
                     </span>
                 </div>
@@ -180,7 +180,7 @@
         <!-- Right Side: Live Cropped Output & Presets Info -->
         <div class="flex flex-col gap-6">
             <!-- Cropped Live Preview Card -->
-            <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-5 shadow-2xl flex flex-col">
+            <div class="glass-surface rounded-3xl p-5 shadow-2xl flex flex-col">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
                         <span>👁️</span>
@@ -203,13 +203,13 @@
             </div>
 
             <!-- Recipe Social Publishing Card -->
-            <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-5 shadow-2xl flex flex-col justify-between flex-1">
+            <div class="glass-surface rounded-3xl p-5 shadow-2xl flex flex-col justify-between flex-1">
                 <div>
                     <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
                         <span>🎯</span>
                         <span>Composition Tips</span>
                     </h3>
-                    <div id="ratio-tip" class="text-xs text-gray-300 leading-relaxed bg-[#12192b] p-3.5 rounded-2xl border border-gray-800">
+                    <div id="ratio-tip" class="text-xs text-gray-300 leading-relaxed bg-surface-base p-3.5 rounded-2xl border border-gray-800">
                         <p class="font-bold text-amber-400 mb-1">Facebook & Instagram (4:5 Portrait)</p>
                         <p>4:5 portrait fills the phone screen vertically without letterboxing. Frame the hero food item in the middle third for maximum engagement.</p>
                     </div>
@@ -233,7 +233,7 @@
     </div>
 
     <!-- Bottom Filmstrip / Frame Selector -->
-    <div class="bg-[#1a1a2e]/90 backdrop-blur border border-gray-800/80 rounded-3xl p-5 shadow-2xl">
+    <div class="glass-surface rounded-3xl p-5 shadow-2xl">
         <div class="flex items-center justify-between mb-3 px-1">
             <div class="flex items-center gap-2">
                 <span class="text-xs font-bold text-white uppercase tracking-wider">Frames in Layout ({{ count($selectedFrames) }})</span>
@@ -256,14 +256,14 @@
                      data-filename="{{ $frame['filename'] }}"
                      data-time="{{ $frame['formatted_time'] ?? '00:00' }}"
                      data-custom-crop="{{ $hasCustomCrop ? 'true' : 'false' }}"
-                     class="frame-thumb-card relative shrink-0 w-36 cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300 group bg-[#16213e] hover:border-amber-500/70 border-gray-800 shadow-md hover:shadow-xl hover:-translate-y-0.5">
+                     class="frame-thumb-card relative shrink-0 w-36 cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300 group bg-surface-raised hover:border-amber-500/70 border-gray-800 shadow-md hover:shadow-xl hover:-translate-y-0.5">
                     
                     <div class="aspect-video w-full overflow-hidden bg-black relative">
                         <img src="{{ route('project.frame.image', ['slug' => $project['slug'], 'filename' => $frame['filename']]) }}" 
                              alt="Frame {{ $index + 1 }}" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         
-                        <div class="absolute top-1.5 left-1.5 bg-black/85 px-1.5 py-0.5 rounded text-[10px] font-extrabold text-white backdrop-blur shadow">
+                        <div class="absolute top-1.5 left-1.5 bg-black/85 px-1.5 py-0.5 rounded text-[10px] font-display font-extrabold text-white backdrop-blur shadow">
                             #{{ sprintf('%02d', $index + 1) }}
                         </div>
                         <div class="absolute bottom-1.5 right-1.5 bg-black/85 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium text-gray-300 backdrop-blur shadow">
@@ -271,7 +271,7 @@
                         </div>
                     </div>
 
-                    <div class="p-2 bg-[#12192b] flex items-center justify-between text-[11px]">
+                    <div class="p-2 bg-surface-base flex items-center justify-between text-[11px]">
                         <span class="text-gray-300 font-semibold truncate max-w-[85px]">Step {{ $index + 1 }}</span>
                         <span class="custom-badge text-[9px] px-1.5 py-0.5 rounded-full font-bold {{ $hasCustomCrop ? 'bg-amber-950 text-amber-400 border border-amber-800/40' : 'hidden' }}">
                             Custom
@@ -332,10 +332,10 @@
 
         document.querySelectorAll('.frame-thumb-card').forEach(el => {
             if (el.dataset.frameId === frameId) {
-                el.classList.add('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-[#1b2545]');
+                el.classList.add('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-surface-overlay');
                 el.classList.remove('border-gray-800');
             } else {
-                el.classList.remove('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-[#1b2545]');
+                el.classList.remove('border-amber-500', 'ring-4', 'ring-amber-500/30', 'scale-[1.02]', 'bg-surface-overlay');
                 el.classList.add('border-gray-800');
             }
         });
