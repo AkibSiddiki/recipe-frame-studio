@@ -290,19 +290,19 @@
                                                 <span class="text-[10px] text-gray-500">px</span>
                                             </div>
                                         </div>
-                                        <input type="text" id="step-title-{{ $idx }}" value="{{ $step['title'] ?? '' }}" oninput="onStepTextChange({{ $idx }})" placeholder="e.g. Sear the Chicken Thighs" style="font-family: 'Li Alinur Mayaboti', 'Hind Siliguri', sans-serif; text-align: {{ $step['text_align'] ?? ($recipeSteps['style']['text_align'] ?? 'left') }};" class="w-full bg-[#0d1322] border border-gray-700 rounded-xl px-3 py-1.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-amber-500 text-xs">
+                                        <input type="text" id="step-title-{{ $idx }}" value="{{ $step['title'] ?? '' }}" oninput="onStepTextChange({{ $idx }})" placeholder="e.g. Sear the Chicken Thighs" style="font-family: 'Hind Siliguri', 'Li Alinur Mayaboti', sans-serif; text-align: {{ $step['text_align'] ?? ($recipeSteps['style']['text_align'] ?? 'left') }};" class="w-full bg-[#0d1322] border border-gray-700 rounded-xl px-3 py-1.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-amber-500 text-xs">
                                     </div>
 
                                     <!-- Description Area -->
                                     <div>
                                         <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Culinary Instructions</label>
-                                        <textarea id="step-desc-{{ $idx }}" rows="2" oninput="onStepTextChange({{ $idx }})" placeholder="e.g. Cook on high heat for 3-4 minutes each side until deeply golden and crispy." class="w-full bg-[#0d1322] border border-gray-700 rounded-xl px-3 py-1.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-amber-500 text-xs resize-none"></textarea>
+                                        <textarea id="step-desc-{{ $idx }}" rows="2" oninput="onStepTextChange({{ $idx }})" placeholder="e.g. Cook on high heat for 3-4 minutes each side until deeply golden and crispy." style="font-family: 'Hind Siliguri', 'Li Alinur Mayaboti', sans-serif;" class="w-full bg-[#0d1322] border border-gray-700 rounded-xl px-3 py-1.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-amber-500 text-xs resize-none"></textarea>
                                     </div>
 
                                     <!-- Ingredients / Notes Input -->
                                     <div>
                                         <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Key Ingredients & Quantities (Optional)</label>
-                                        <input type="text" id="step-ing-{{ $idx }}" value="{{ $step['ingredients'] ?? '' }}" oninput="onStepTextChange({{ $idx }})" placeholder="e.g. 2 tbsp olive oil, 1 tsp sea salt, fresh thyme" class="w-full bg-[#0d1322] border border-gray-700 rounded-xl px-3 py-1.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-amber-500 text-xs">
+                                        <input type="text" id="step-ing-{{ $idx }}" value="{{ $step['ingredients'] ?? '' }}" oninput="onStepTextChange({{ $idx }})" placeholder="e.g. 2 tbsp olive oil, 1 tsp sea salt, fresh thyme" style="font-family: 'Hind Siliguri', 'Li Alinur Mayaboti', sans-serif;" class="w-full bg-[#0d1322] border border-gray-700 rounded-xl px-3 py-1.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-amber-500 text-xs">
                                     </div>
                                 </div>
                             </div>
@@ -594,9 +594,13 @@
             }
         }
 
-        // Preload and refresh canvas with Li Alinur Mayaboti font
+        // Preload and refresh canvas with Hind Siliguri font
         if (document.fonts) {
-            document.fonts.load("bold 24px 'Li Alinur Mayaboti'").then(() => {
+            Promise.all([
+                document.fonts.load("bold 24px 'Hind Siliguri'"),
+                document.fonts.load("24px 'Hind Siliguri'"),
+                document.fonts.load("bold 24px 'Li Alinur Mayaboti'")
+            ]).then(() => {
                 renderLiveCanvas();
             });
         }
@@ -896,7 +900,7 @@
 
         // Scale factor relative to 1080px standard width
         const scale = w / 1080;
-        const fontSizeScale = styleConfig.font_size === 'small' ? 0.85 : (styleConfig.font_size === 'large' ? 1.2 : 1.0);
+        const fontSizeScale = styleConfig.font_size === 'small' ? 0.85 : (styleConfig.font_size === 'large' ? 1.35 : 1.0);
 
         const titleSize = Math.max(20, Math.round(36 * scale * fontSizeScale));
         const descSize = Math.max(16, Math.round(26 * scale * fontSizeScale));
@@ -925,7 +929,7 @@
 
         clearTextShadow();
 
-        const fontFallback = "'Li Alinur Mayaboti', 'Hind Siliguri', 'Noto Sans Bengali', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        const fontFallback = "'Hind Siliguri', 'Li Alinur Mayaboti', 'Noto Sans Bengali', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
         const currentStepPadding = (currentStep.padding !== undefined && currentStep.padding !== null && currentStep.padding !== '')
             ? parseInt(currentStep.padding, 10)

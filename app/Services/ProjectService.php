@@ -1227,12 +1227,29 @@ class ProjectService
 
     public function resolveTtfFont(bool $bold = false): ?string
     {
+        $hindBold = public_path('HindSiliguri-Bold.ttf');
+        $hindSemiBold = public_path('HindSiliguri-SemiBold.ttf');
+        $hindMedium = public_path('HindSiliguri-Medium.ttf');
+        $hindRegular = public_path('HindSiliguri-Regular.ttf');
+        $hindFolderBold = public_path('fonts/HindSiliguri/HindSiliguri-Bold.ttf');
+        $hindFolderSemiBold = public_path('fonts/HindSiliguri/HindSiliguri-SemiBold.ttf');
+        $hindFolderMedium = public_path('fonts/HindSiliguri/HindSiliguri-Medium.ttf');
+        $hindFolderRegular = public_path('fonts/HindSiliguri/HindSiliguri-Regular.ttf');
+
         $publicFont = public_path('Li Alinur Mayaboti Unicode.ttf');
         $publicItalic = public_path('Li Alinur Mayaboti Unicode Italic.ttf');
         $folderFont = public_path('fonts/AlinurMayaboti/Unicode/Li Alinur Mayaboti Unicode.ttf');
         $folderItalic = public_path('fonts/AlinurMayaboti/Unicode/Li Alinur Mayaboti Unicode Italic.ttf');
 
         $candidates = $bold ? [
+            $hindBold,
+            $hindFolderBold,
+            $hindSemiBold,
+            $hindFolderSemiBold,
+            $hindMedium,
+            $hindFolderMedium,
+            $hindRegular,
+            $hindFolderRegular,
             $publicFont,
             $folderFont,
             '/System/Library/Fonts/KohinoorBangla.ttc',
@@ -1252,6 +1269,14 @@ class ProjectService
             '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
             '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
         ] : [
+            $hindRegular,
+            $hindFolderRegular,
+            $hindMedium,
+            $hindFolderMedium,
+            $hindSemiBold,
+            $hindFolderSemiBold,
+            $hindBold,
+            $hindFolderBold,
             $publicFont,
             $folderFont,
             $publicItalic,
@@ -1715,7 +1740,7 @@ class ProjectService
         $canvasH = imagesy($srcImg);
 
         $layout = $style['layout'] ?? 'bottom-banner';
-        $size = $style['size'] ?? 'medium';
+        $size = $style['font_size'] ?? ($style['size'] ?? 'medium');
         $opacity = max(0, min(100, (int) ($style['bg_opacity'] ?? 85)));
         $textAlign = $step['text_align'] ?? ($style['text_align'] ?? 'left');
         $bgColorHex = $style['bg_color'] ?? '#0f172a';
@@ -1733,13 +1758,14 @@ class ProjectService
 
         $scaleFactor = match ($size) {
             'small' => 0.85,
-            'large' => 1.2,
+            'large' => 1.35,
             default => 1.0,
         };
 
-        $baseTitleSize = max(18, (int) round($canvasW * 0.032 * $scaleFactor));
-        $baseDescSize = max(14, (int) round($canvasW * 0.022 * $scaleFactor));
-        $baseBadgeSize = max(13, (int) round($canvasW * 0.02 * $scaleFactor));
+        $scale = $canvasW / 1080;
+        $baseTitleSize = max(20, (int) round(36 * $scale * $scaleFactor));
+        $baseDescSize = max(16, (int) round(26 * $scale * $scaleFactor));
+        $baseBadgeSize = max(16, (int) round(24 * $scale * $scaleFactor));
 
         $stepNum = $step['step_number'] ?? 1;
         $badgeText = sprintf('#%02d', $stepNum);
@@ -1779,7 +1805,7 @@ class ProjectService
                 imagestring($srcImg, 5, $badgeX + 10, $badgeY + 8, $badgeText, $badgeTextColor);
             }
         } elseif ($layout === 'top-banner') {
-            $bannerH = max((int) round($canvasH * 0.18 * $scaleFactor), $pad * 2 + (int) round($baseBadgeSize * 2.2));
+            $bannerH = max((int) round($canvasH * 0.18 * max(1.0, $scaleFactor)), $pad * 2 + (int) round($baseBadgeSize * 2.2));
             if ($opacity > 0) {
                 imagefilledrectangle($srcImg, 0, 0, $canvasW, $bannerH, $bgColor);
             }
@@ -1849,7 +1875,7 @@ class ProjectService
             }
         } elseif ($layout === 'lower-third') {
             $cardW = $canvasW - ($pad * 2);
-            $cardH = (int) round($canvasH * 0.22 * $scaleFactor);
+            $cardH = (int) round($canvasH * 0.22 * max(1.0, $scaleFactor));
             $cardX = $pad;
             $cardY = $canvasH - $cardH - (int) round($canvasH * 0.04);
 
@@ -1922,7 +1948,7 @@ class ProjectService
                 }
             }
         } else {
-            $bannerH = (int) round($canvasH * 0.22 * $scaleFactor);
+            $bannerH = (int) round($canvasH * 0.28 * max(1.0, $scaleFactor));
             $bannerY = $canvasH - $bannerH;
 
             if ($opacity > 0) {
@@ -1954,7 +1980,7 @@ class ProjectService
                 $startX = max($pad, (int) round($canvasW * 0.04));
             }
 
-            $badgeY = $bannerY + (int) round($bannerH * 0.16);
+            $badgeY = $bannerY + (int) round($bannerH * 0.18);
 
             if ($showBadge) {
                 $badgeX = $startX;
@@ -1977,10 +2003,10 @@ class ProjectService
             }
 
             if ($descText !== '') {
-                $descY = $badgeY + $badgeH + (int) round($baseDescSize * 1.6);
+                $descY = $badgeY + $badgeH + (int) round($baseDescSize * 1.5);
                 $maxW = $canvasW - ($pad * 2);
                 $lines = $this->wrapText($baseDescSize, $fontFile, $descText, $maxW);
-                $lineH = (int) round($baseDescSize * 1.4);
+                $lineH = (int) round($baseDescSize * 1.35);
 
                 foreach (array_slice($lines, 0, 2) as $lIndex => $line) {
                     $yPos = $descY + ($lIndex * $lineH);

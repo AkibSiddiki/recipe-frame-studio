@@ -13,8 +13,38 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|outfit:400,500,600,700,800|hind-siliguri:400,500,600,700" rel="stylesheet" />
+    <link rel="preload" href="/HindSiliguri-Bold.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="/HindSiliguri-Regular.ttf" as="font" type="font/ttf" crossorigin>
     <link rel="preload" href="/Li%20Alinur%20Mayaboti%20Unicode.ttf" as="font" type="font/ttf" crossorigin>
     <style>
+        @font-face {
+            font-family: 'Hind Siliguri';
+            src: url('/HindSiliguri-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Hind Siliguri';
+            src: url('/HindSiliguri-Medium.ttf') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Hind Siliguri';
+            src: url('/HindSiliguri-SemiBold.ttf') format('truetype');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Hind Siliguri';
+            src: url('/HindSiliguri-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
         @font-face {
             font-family: 'Li Alinur Mayaboti';
             src: url('/Li%20Alinur%20Mayaboti%20Unicode.ttf') format('truetype');

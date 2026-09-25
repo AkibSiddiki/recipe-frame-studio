@@ -405,10 +405,15 @@ test('saveSteps persists style title_padding and per-step padding', function () 
 test('ProjectService resolves font from public folder as primary font', function () {
     $projectService = app(ProjectService::class);
     $resolvedFont = $projectService->resolveTtfFont(false);
+    $resolvedBold = $projectService->resolveTtfFont(true);
 
     expect($resolvedFont)->not->toBeNull();
-    expect($resolvedFont)->toBe(public_path('Li Alinur Mayaboti Unicode.ttf'));
+    expect($resolvedFont)->toBe(public_path('HindSiliguri-Regular.ttf'));
     expect(file_exists($resolvedFont))->toBeTrue();
+
+    expect($resolvedBold)->not->toBeNull();
+    expect($resolvedBold)->toBe(public_path('HindSiliguri-Bold.ttf'));
+    expect(file_exists($resolvedBold))->toBeTrue();
 });
 
 test('saveSteps allows 0 percent banner opacity and renders without error', function () {
@@ -629,4 +634,42 @@ test('bengali complex text is shaped properly without broken glyphs in step fram
     $zipPath = $projectService->createProjectZipArchive($project['slug']);
     expect($zipPath)->not->toBeNull();
     expect(file_exists($zipPath))->toBeTrue();
+});
+
+test('saveSteps with large font_size scales font and banner properly', function () {
+    $project = createStepsTestingProject();
+    $projectService = app(ProjectService::class);
+
+    $payload = [
+        'style' => [
+            'layout' => 'bottom-banner',
+            'font_size' => 'large',
+            'bg_opacity' => 85,
+        ],
+        'items' => [
+            [
+                'frame_id' => 'frame_0001.jpg',
+                'step_number' => 1,
+                'title' => 'ধাপ ১: ডিম ও চিনি ফেটিয়ে নিন',
+                'description' => 'ভালোভাবে মিশ্রণ তৈরি করুন যতক্ষণ না চিনি পুরোপুরি গলে যায়।',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $response = $this->postJson(route('project.steps.save', $project['slug']), $payload);
+    $response->assertOk();
+
+    $steps = $projectService->getRecipeSteps($project['slug']);
+    expect($steps['style']['font_size'])->toBe('large');
+
+    $stepFramePath = $projectService->getStepFramePath($project['slug'], 'frame_0001.jpg', true);
+    expect($stepFramePath)->not->toBeNull();
+    expect(file_exists($stepFramePath))->toBeTrue();
+
+    // Verify generated image is valid JPEG and non-empty
+    $imgSize = @getimagesize($stepFramePath);
+    expect($imgSize)->not->toBeFalse();
+    expect($imgSize[0])->toBeGreaterThan(0);
+    expect($imgSize[1])->toBeGreaterThan(0);
 });
