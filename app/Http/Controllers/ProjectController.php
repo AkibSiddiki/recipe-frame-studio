@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Native\Desktop\Dialog;
+use Native\Desktop\Facades\Shell;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProjectController extends Controller
@@ -654,7 +656,11 @@ class ProjectController extends Controller
 
     public function downloadCollage(string $slug): BinaryFileResponse
     {
-        $filePath = $this->projectService->getCollageImagePath($slug, true);
+        $filePath = $this->projectService->getCollageImagePath($slug, false);
+
+        if (! $filePath || ! file_exists($filePath)) {
+            $filePath = $this->projectService->getCollageImagePath($slug, true);
+        }
 
         if (! $filePath || ! file_exists($filePath)) {
             abort(404, 'Collage image not available for download.');
@@ -664,13 +670,22 @@ class ProjectController extends Controller
         $projectName = Str::slug($project['name'] ?? $slug, '_');
         $ext = pathinfo($filePath, PATHINFO_EXTENSION);
         $downloadName = sprintf('%s_recipe_collage.%s', $projectName, $ext);
+        $mime = $ext === 'png' ? 'image/png' : 'image/jpeg';
 
-        return response()->download($filePath, $downloadName);
+        return response()->download($filePath, $downloadName, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'attachment; filename="'.$downloadName.'"',
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]);
     }
 
     public function downloadZip(string $slug): BinaryFileResponse
     {
-        $zipPath = $this->projectService->createProjectZipArchive($slug);
+        $zipPath = $this->projectService->getProjectZipPath($slug);
+
+        if (! $zipPath || ! file_exists($zipPath)) {
+            $zipPath = $this->projectService->createProjectZipArchive($slug);
+        }
 
         if (! $zipPath || ! file_exists($zipPath)) {
             abort(500, 'Failed to create recipe zip bundle.');
@@ -680,7 +695,11 @@ class ProjectController extends Controller
         $projectName = Str::slug($project['name'] ?? $slug, '_');
         $downloadName = sprintf('%s_complete_recipe_bundle.zip', $projectName);
 
-        return response()->download($zipPath, $downloadName);
+        return response()->download($zipPath, $downloadName, [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="'.$downloadName.'"',
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]);
     }
 
     public function downloadStepCard(string $slug, string $filename): BinaryFileResponse
@@ -693,6 +712,264 @@ class ProjectController extends Controller
         }
 
         return response()->download($filePath, $filename);
+    }
+
+    public function nativeSave(Request $request, string $slug): JsonResponse
+    {
+        $project = $this->projectService->load($slug);
+        if (! $project) {
+            return response()->json(['error' => 'Project not found'], 404);
+        }
+
+        $type = $request->input('type') === 'collage' ? 'collage' : 'zip';
+        $projectName = Str::slug($project['name'] ?? $slug, '_');
+
+        if ($type === 'collage') {
+            $sourceFile = $this->projectService->getCollageImagePath($slug, false);
+            if (! $sourceFile || ! file_exists($sourceFile)) {
+                $sourceFile = $this->projectService->getCollageImagePath($slug, true);
+            }
+            $ext = $sourceFile ? pathinfo($sourceFile, PATHINFO_EXTENSION) : 'jpg';
+            $defaultFilename = sprintf('%s_recipe_collage.%s', $projectName, $ext);
+            $filterName = $ext === 'png' ? 'PNG Image' : 'JPEG Image';
+            $fallbackUrl = route('project.export.download.collage', $slug);
+        } else {
+            $sourceFile = $this->projectService->getProjectZipPath($slug);
+            if (! $sourceFile || ! file_exists($sourceFile)) {
+                $sourceFile = $this->projectService->createProjectZipArchive($slug);
+            }
+            $ext = 'zip';
+            $defaultFilename = sprintf('%s_complete_recipe_bundle.zip', $projectName);
+            $filterName = 'ZIP Archive';
+            $fallbackUrl = route('project.export.download.zip', $slug);
+        }
+
+        if (! $sourceFile || ! file_exists($sourceFile)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Export asset is not ready for saving.',
+            ], 404);
+        }
+
+        if (! class_exists(Dialog::class)) {
+            return response()->json([
+                'success' => false,
+                'native' => false,
+                'download_url' => $fallbackUrl,
+                'filename' => $defaultFilename,
+                'message' => 'Native save dialog unavailable.',
+            ]);
+        }
+
+        try {
+            $dialog = Dialog::new()
+                ->title('Save '.($type === 'zip' ? 'Recipe ZIP Bundle' : 'Recipe Collage'))
+                ->defaultPath($defaultFilename)
+                ->filter($filterName, [$ext])
+                ->button('Save');
+
+            $chosenPath = $dialog->save();
+
+            if (! $chosenPath) {
+                return response()->json([
+                    'success' => false,
+                    'native' => true,
+                    'cancelled' => true,
+                    'message' => 'Save cancelled by user.',
+                ]);
+            }
+
+            $targetDir = dirname($chosenPath);
+            if (! File::isDirectory($targetDir)) {
+                File::makeDirectory($targetDir, 0755, true, true);
+            }
+
+            File::copy($sourceFile, $chosenPath);
+
+            if (class_exists(Shell::class)) {
+                try {
+                    Shell::showInFolder($chosenPath);
+                } catch (\Throwable) {
+                    // Ignore shell errors
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'native' => true,
+                'saved_path' => $chosenPath,
+                'filename' => basename($chosenPath),
+                'message' => 'File successfully saved and revealed in folder!',
+            ]);
+        } catch (\Throwable $e) {
+            Log::info('NativePHP dialog unavailable or error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'native' => false,
+                'download_url' => $fallbackUrl,
+                'filename' => $defaultFilename,
+                'message' => 'Native dialog unavailable: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    public function openExportFolder(Request $request, string $slug): JsonResponse
+    {
+        $path = $request->input('path');
+        if (! empty($path) && file_exists($path)) {
+            $target = $path;
+        } else {
+            $projectPath = $this->projectService->getProjectPath($slug);
+            $target = $projectPath.DIRECTORY_SEPARATOR.'output';
+        }
+
+        if (class_exists(Shell::class)) {
+            try {
+                Shell::showInFolder($target);
+
+                return response()->json(['success' => true, 'opened' => $target]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return response()->json(['success' => false, 'error' => 'Native Shell unavailable']);
+    }
+
+    public function prepareZip(Request $request, string $slug): JsonResponse
+    {
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            return response()->json(['error' => 'Project not found'], 404);
+        }
+
+        if ($request->has('collage_settings') && is_array($request->input('collage_settings'))) {
+            $this->projectService->saveCollageSettings($slug, $request->input('collage_settings'));
+        }
+
+        try {
+            $zipPath = $this->projectService->createProjectZipArchive($slug, true);
+
+            if (! $zipPath || ! file_exists($zipPath)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to generate recipe ZIP bundle archive.',
+                ], 500);
+            }
+
+            $fileSize = filesize($zipPath);
+            $projectName = Str::slug($project['name'] ?? $slug, '_');
+            $downloadName = sprintf('%s_complete_recipe_bundle.zip', $projectName);
+            $selectedFrames = $this->projectService->getSelectedFrames($slug);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Recipe ZIP bundle generated successfully.',
+                'download_url' => route('project.export.download.zip', $slug),
+                'filename' => $downloadName,
+                'file_size' => $this->formatBytes($fileSize),
+                'bytes' => $fileSize,
+                'total_cards' => count($selectedFrames),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('ZIP bundle generation failed: '.$e->getMessage(), [
+                'slug' => $slug,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Error generating export bundle: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function prepareCollage(Request $request, string $slug): JsonResponse
+    {
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            return response()->json(['error' => 'Project not found'], 404);
+        }
+
+        if ($request->has('collage_settings') && is_array($request->input('collage_settings'))) {
+            $this->projectService->saveCollageSettings($slug, $request->input('collage_settings'));
+        }
+
+        try {
+            $filePath = $this->projectService->getCollageImagePath($slug, true);
+
+            if (! $filePath || ! file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to render recipe collage image.',
+                ], 500);
+            }
+
+            $fileSize = filesize($filePath);
+            $projectName = Str::slug($project['name'] ?? $slug, '_');
+            $ext = pathinfo($filePath, PATHINFO_EXTENSION);
+            $downloadName = sprintf('%s_recipe_collage.%s', $projectName, $ext);
+            $selectedFrames = $this->projectService->getSelectedFrames($slug);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Recipe collage rendered successfully.',
+                'download_url' => route('project.export.download.collage', $slug),
+                'filename' => $downloadName,
+                'file_size' => $this->formatBytes($fileSize),
+                'bytes' => $fileSize,
+                'total_cards' => count($selectedFrames),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Collage generation failed: '.$e->getMessage(), [
+                'slug' => $slug,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Error rendering recipe collage: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function exportStatus(string $slug): JsonResponse
+    {
+        $project = $this->projectService->load($slug);
+
+        if (! $project) {
+            return response()->json(['error' => 'Project not found'], 404);
+        }
+
+        $progress = $this->projectService->getExportProgress($slug);
+
+        return response()->json($progress ?? [
+            'status' => 'idle',
+            'percent' => 0,
+            'message' => 'Ready to export',
+        ]);
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 1).' MB';
+        }
+
+        if ($bytes >= 1024) {
+            return number_format($bytes / 1024, 1).' KB';
+        }
+
+        return $bytes.' B';
     }
 
     public function destroy(Request $request, string $slug): RedirectResponse|JsonResponse

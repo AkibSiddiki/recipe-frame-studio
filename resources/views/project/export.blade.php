@@ -33,15 +33,15 @@
                 <span id="save-collage-text">Save Setup</span>
             </button>
 
-            <a href="{{ route('project.export.download.zip', $project['slug']) }}" id="zip-download-btn" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-950/40">
-                <span>📦</span>
+            <button type="button" onclick="startZipExport()" id="zip-download-btn" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-950/40 cursor-pointer active:scale-95 group">
+                <span class="group-hover:scale-110 transition-transform">📦</span>
                 <span>Download ZIP Bundle</span>
-            </a>
+            </button>
 
-            <a href="{{ route('project.export.download.collage', $project['slug']) }}" id="collage-download-btn" class="btn-shine bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-emerald-950/40 flex items-center gap-2 active:scale-95">
-                <span>📥</span>
+            <button type="button" onclick="startCollageExport()" id="collage-download-btn" class="btn-shine bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-5 py-2 rounded-xl font-bold text-xs tracking-wide transition shadow-lg shadow-emerald-950/40 flex items-center gap-2 active:scale-95 cursor-pointer group">
+                <span class="group-hover:scale-110 transition-transform">📥</span>
                 <span>Download Collage</span>
-            </a>
+            </button>
         </div>
     </div>
 
@@ -291,6 +291,145 @@
             </div>
         </div>
     @endif
+</div>
+
+<!-- Step-by-Step Export Progress Modal -->
+<div id="export-progress-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4 sm:p-6 transition-all duration-300">
+    <div class="relative w-full max-w-xl rounded-3xl bg-[#0c1322] border border-white/10 shadow-[0_0_80px_rgba(16,185,129,0.18)] overflow-hidden flex flex-col">
+        <!-- Top Shimmer Glow Bar -->
+        <div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-teal-400 to-emerald-400 animate-pulse"></div>
+
+        <div class="p-6 sm:p-7 flex flex-col gap-6">
+            <!-- Modal Header -->
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div id="export-modal-icon-container" class="w-13 h-13 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-3xl shadow-inner relative shrink-0">
+                        <span id="export-modal-icon" class="animate-bounce">📦</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span id="export-badge-tag" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                Background Export Studio
+                            </span>
+                            <span id="export-timer" class="text-[11px] font-mono text-gray-400 flex items-center gap-1">
+                                <span>⏱️</span><span id="export-timer-val">0.0s</span>
+                            </span>
+                        </div>
+                        <h3 id="export-modal-title" class="text-xl font-display font-extrabold text-white tracking-tight">Exporting Recipe Bundle</h3>
+                        <p id="export-modal-subtitle" class="text-xs text-gray-400 mt-0.5">Generating collage, step overlays & compiling into high-res ZIP...</p>
+                    </div>
+                </div>
+
+                <button type="button" id="export-modal-close-btn" onclick="closeExportModal()" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/10 transition hidden cursor-pointer" title="Close dialog">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Progress Meter Bar -->
+            <div class="bg-black/40 rounded-2xl p-4 border border-white/5 flex flex-col gap-2.5">
+                <div class="flex items-center justify-between text-xs">
+                    <span id="export-status-label" class="font-semibold text-gray-300 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span id="export-status-text">Processing export pipeline...</span>
+                    </span>
+                    <span id="export-percent-num" class="font-mono font-extrabold text-base text-emerald-400">10%</span>
+                </div>
+
+                <!-- Animated Progress Bar -->
+                <div class="w-full h-3 bg-gray-900 rounded-full p-0.5 border border-white/10 overflow-hidden relative shadow-inner">
+                    <div id="export-progress-bar-fill" class="h-full rounded-full bg-gradient-to-r from-indigo-500 via-teal-400 to-emerald-400 transition-all duration-300 shadow-[0_0_15px_rgba(52,211,153,0.5)]" style="width: 10%"></div>
+                </div>
+            </div>
+
+            <!-- Step-by-Step Milestones Trackers -->
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between pb-1.5 border-b border-white/5">
+                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Export Execution Pipeline</span>
+                    <span id="export-pipeline-step-count" class="text-[11px] font-mono text-emerald-400 font-semibold">Step 1 of 5</span>
+                </div>
+
+                <div id="export-steps-list" class="space-y-2 mt-1">
+                    <!-- Dynamic Steps injected by JS -->
+                </div>
+            </div>
+
+            <!-- "Anti-Boredom" Live Activity Ticker & Pro Tips Card -->
+            <div class="bg-gradient-to-r from-emerald-950/30 via-slate-900/40 to-indigo-950/30 border border-emerald-500/20 rounded-2xl p-3.5 flex items-start gap-3">
+                <span class="text-xl shrink-0 mt-0.5" id="export-tip-icon">💡</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[10px] uppercase font-bold tracking-wider text-emerald-400/90 mb-1 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>What's Happening in Background</span>
+                    </div>
+                    <p id="export-live-tip-text" class="text-xs text-gray-300 leading-relaxed transition-all duration-300">
+                        Preparing recipe frames and rendering complex OpenType typography shaping with soft drop shadows...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Completed Summary Section (Revealed when 100% finished) -->
+            <div id="export-completed-section" class="hidden flex flex-col gap-4 pt-2 border-t border-white/10">
+                <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl font-bold shrink-0">
+                            ✓
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                                <span>Export Complete!</span>
+                                <span class="text-xs text-emerald-400">🎉</span>
+                            </h4>
+                            <p id="export-result-details" class="text-xs text-gray-300 font-mono mt-0.5 truncate">
+                                recipe_bundle.zip • Ready
+                            </p>
+                            <p id="export-download-status-container" class="text-[11px] text-emerald-400 font-semibold mt-1 flex items-center gap-1.5">
+                                <span id="export-download-ping-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                <span id="export-download-status-text">Saving file to your device...</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" id="export-open-folder-btn" onclick="openExportDestinationFolder()" class="hidden bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                            <span>📂</span>
+                            <span>Open Folder</span>
+                        </button>
+                        <button type="button" id="export-download-direct-btn" onclick="downloadExportedFileAgain()" class="btn-shine bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 cursor-pointer">
+                            <span>📥</span>
+                            <span id="export-download-btn-label">Download Again</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeExportModal()" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-xl text-xs font-bold transition cursor-pointer">
+                        Done
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Notification (If any failure occurs) -->
+            <div id="export-error-section" class="hidden flex flex-col gap-3 pt-2 border-t border-rose-500/20">
+                <div class="bg-rose-950/40 border border-rose-500/40 rounded-2xl p-4 flex items-start gap-3">
+                    <span class="text-rose-400 text-xl">⚠️</span>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-bold text-white">Export Failed</h4>
+                        <p id="export-error-message" class="text-xs text-rose-300 mt-1">An unexpected error occurred during export.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2.5">
+                    <button type="button" onclick="closeExportModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded-xl text-xs font-semibold transition cursor-pointer">
+                        Close
+                    </button>
+                    <button type="button" id="export-retry-btn" onclick="retryCurrentExport()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-rose-950/40">
+                        <span>🔄</span>
+                        <span>Retry</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -713,6 +852,588 @@
 
         renderCollage();
         showToast('Applied last saved collage setup!');
+    }
+
+    // ==========================================
+    // STEP-BY-STEP EXPORT ORCHESTRATION & MODAL
+    // ==========================================
+    let currentExportType = null;
+    let exportTimerInterval = null;
+    let exportPollInterval = null;
+    let exportTipsInterval = null;
+    let simulatedProgressTimer = null;
+    let exportStartTime = 0;
+    let currentProgressPercent = 0;
+    let activePipelineSteps = [];
+
+    const backgroundTips = [
+        "Shaping complex OpenType fonts with HarfBuzz & multi-pass drop shadows...",
+        "Validating step badges, color contrast, and alpha blend opacities...",
+        "Compositing recipe photos into high-resolution aspect-ratio grid...",
+        "Archiving individual recipe step cards formatted for Instagram & TikTok...",
+        "Compiling ingredients, cooking times, and step instructions into RECIPE_SUMMARY.txt...",
+        "Fast streaming assets with zero-compression-overhead binary packaging into ZIP archive...",
+        "💡 Pro Tip: High-DPI export ensures your recipe cards remain razor-sharp when printed!",
+        "💡 Pro Tip: You can share single step cards as a multi-photo carousel on social media.",
+        "💡 Pro Tip: The included summary text can be directly pasted into food blogs or YouTube descriptions."
+    ];
+
+    const ZIP_PIPELINE_STEPS = [
+        { id: 'prep', title: 'Asset Verification', desc: 'Validating selected frames, aspect ratios & text' },
+        { id: 'cards', title: 'Step Cards Rendering', desc: 'Applying badges, numbers, titles & drop shadows' },
+        { id: 'collage', title: 'Composite Recipe Collage', desc: 'Rendering high-resolution master infographic' },
+        { id: 'manifest', title: 'Recipe Manifest & Notes', desc: 'Compiling ingredient notes & RECIPE_SUMMARY.txt' },
+        { id: 'zip', title: 'ZIP Bundle Compression', desc: 'Packaging all assets into compressed archive' },
+        { id: 'ready', title: 'Delivery & Download', desc: 'Finalizing package and dispatching file' }
+    ];
+
+    const COLLAGE_PIPELINE_STEPS = [
+        { id: 'prep', title: 'Canvas Configuration', desc: 'Calculating layout grid and resolution scale' },
+        { id: 'cards', title: 'Step Frames Preparation', desc: 'Optimizing source images & typography overlays' },
+        { id: 'collage', title: 'Master Collage Stitching', desc: 'Rendering grid cells, header banners & badges' },
+        { id: 'encode', title: 'Image Compression & Encode', desc: 'Encoding high-quality JPG/PNG canvas output' },
+        { id: 'ready', title: 'Delivery & Download', desc: 'Preparing image and launching download' }
+    ];
+
+    let currentActiveStepIdx = 0;
+
+    function renderPipelineSteps(steps) {
+        activePipelineSteps = steps;
+        currentActiveStepIdx = 0;
+        const container = document.getElementById('export-steps-list');
+        if (!container) return;
+
+        container.innerHTML = steps.map((step, idx) => `
+            <div id="step-row-${idx}" class="p-2.5 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-3 transition-all duration-300">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div id="step-indicator-${idx}" class="w-6 h-6 rounded-full border border-gray-700 bg-gray-800 text-gray-500 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 transition-all">
+                        ${idx + 1}
+                    </div>
+                    <div class="min-w-0">
+                        <div id="step-title-${idx}" class="text-xs font-semibold text-gray-400 truncate transition-colors">
+                            ${step.title}
+                        </div>
+                        <div id="step-desc-${idx}" class="text-[10px] text-gray-500 truncate transition-colors">
+                            ${step.desc}
+                        </div>
+                    </div>
+                </div>
+                <span id="step-badge-${idx}" class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-gray-800/80 text-gray-500 shrink-0 transition-colors">
+                    Waiting
+                </span>
+            </div>
+        `).join('');
+    }
+
+    function setStepStatus(idx, status, customMessage = null, stepPercent = null) {
+        const row = document.getElementById(`step-row-${idx}`);
+        const indicator = document.getElementById(`step-indicator-${idx}`);
+        const title = document.getElementById(`step-title-${idx}`);
+        const desc = document.getElementById(`step-desc-${idx}`);
+        const badge = document.getElementById(`step-badge-${idx}`);
+
+        if (!row || !indicator) return;
+
+        if (customMessage && desc) {
+            desc.innerText = customMessage;
+        }
+
+        if (status === 'completed') {
+            row.className = 'p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-950/20 flex items-center justify-between gap-3 transition-all duration-300';
+            indicator.className = 'w-6 h-6 rounded-full border border-emerald-500 bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]';
+            indicator.innerHTML = '✓';
+            if (title) title.className = 'text-xs font-semibold text-emerald-300 truncate transition-colors';
+            if (desc) desc.className = 'text-[10px] text-emerald-400/70 truncate transition-colors';
+            if (badge) {
+                badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 shrink-0 font-bold border border-emerald-500/30';
+                badge.innerText = '100% ✓';
+            }
+        } else if (status === 'active') {
+            currentActiveStepIdx = idx;
+            row.className = 'p-2.5 rounded-xl border border-teal-500/30 bg-teal-950/30 flex items-center justify-between gap-3 transition-all duration-300 ring-1 ring-teal-500/20';
+            indicator.className = 'w-6 h-6 rounded-full border border-teal-400 bg-teal-500/30 text-teal-300 text-xs font-bold flex items-center justify-center shrink-0 animate-pulse';
+            indicator.innerHTML = `
+                <svg class="animate-spin h-3.5 w-3.5 text-teal-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+            `;
+            if (title) title.className = 'text-xs font-bold text-white truncate transition-colors';
+            if (desc) desc.className = 'text-[10px] text-teal-300 truncate transition-colors';
+            if (badge) {
+                const pct = stepPercent !== null ? Math.round(stepPercent) : Math.round(currentProgressPercent);
+                badge.className = 'text-[10px] font-mono px-2.5 py-0.5 rounded-md bg-teal-500/25 text-teal-200 shrink-0 font-extrabold border border-teal-400/40 shadow-[0_0_8px_rgba(45,212,191,0.3)] animate-pulse';
+                badge.innerText = `${pct}%`;
+            }
+
+            const stepCountEl = document.getElementById('export-pipeline-step-count');
+            if (stepCountEl) {
+                stepCountEl.innerText = `Step ${idx + 1} of ${activePipelineSteps.length}`;
+            }
+        } else {
+            row.className = 'p-2.5 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-3 transition-all duration-300';
+            indicator.className = 'w-6 h-6 rounded-full border border-gray-700 bg-gray-800 text-gray-500 font-mono text-[11px] font-bold flex items-center justify-center shrink-0';
+            indicator.innerHTML = `${idx + 1}`;
+            if (title) title.className = 'text-xs font-semibold text-gray-400 truncate transition-colors';
+            if (desc) desc.className = 'text-[10px] text-gray-500 truncate transition-colors';
+            if (badge) {
+                badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-gray-800/80 text-gray-500 shrink-0';
+                badge.innerText = 'Waiting';
+            }
+        }
+    }
+
+    function setProgressBar(percent, statusText = null) {
+        currentProgressPercent = Math.min(100, Math.max(0, percent));
+        const bar = document.getElementById('export-progress-bar-fill');
+        const num = document.getElementById('export-percent-num');
+        const text = document.getElementById('export-status-text');
+
+        if (bar) bar.style.width = `${currentProgressPercent}%`;
+        if (num) num.innerText = `${Math.round(currentProgressPercent)}%`;
+        if (statusText && text) text.innerText = statusText;
+
+        // Continuously update the active step badge with percentage
+        if (currentActiveStepIdx !== null && currentProgressPercent < 100) {
+            const activeBadge = document.getElementById(`step-badge-${currentActiveStepIdx}`);
+            if (activeBadge) {
+                activeBadge.innerText = `${Math.round(currentProgressPercent)}%`;
+            }
+        }
+    }
+
+    function startLiveTipsRotation() {
+        if (exportTipsInterval) clearInterval(exportTipsInterval);
+        let tipIndex = 0;
+        const tipEl = document.getElementById('export-live-tip-text');
+        if (!tipEl) return;
+
+        tipEl.innerText = backgroundTips[0];
+
+        exportTipsInterval = setInterval(() => {
+            tipIndex = (tipIndex + 1) % backgroundTips.length;
+            tipEl.style.opacity = '0';
+            setTimeout(() => {
+                tipEl.innerText = backgroundTips[tipIndex];
+                tipEl.style.opacity = '1';
+            }, 250);
+        }, 3200);
+    }
+
+    function startElapsedTimer() {
+        if (exportTimerInterval) clearInterval(exportTimerInterval);
+        exportStartTime = Date.now();
+        const timerVal = document.getElementById('export-timer-val');
+
+        exportTimerInterval = setInterval(() => {
+            const elapsedSeconds = ((Date.now() - exportStartTime) / 1000).toFixed(1);
+            if (timerVal) timerVal.innerText = `${elapsedSeconds}s`;
+        }, 100);
+    }
+
+    function startZipExport() {
+        currentExportType = 'zip';
+        prepareAndShowModal({
+            title: 'Exporting Complete Recipe Bundle',
+            subtitle: 'Stitching collage, rendering step cards & packing into ZIP bundle...',
+            icon: '📦',
+            badge: 'ZIP Bundle Packaging',
+            steps: ZIP_PIPELINE_STEPS
+        });
+
+        // Ensure latest unsaved styling adjustments are applied
+        saveCollageSettings(true);
+
+        // Simulated intelligent progress progression with clear percentage updates
+        startSimulatedProgress([
+            { atMs: 150, percent: 12, stepIdx: 0, msg: 'Inspecting recipe step frames and canvas settings (12%)...' },
+            { atMs: 900, percent: 28, stepIdx: 1, msg: 'Rendering step cards with badges & font drop shadows (28%)...' },
+            { atMs: 1800, percent: 42, stepIdx: 1, msg: 'Applying overlays and formatting typography (42%)...' },
+            { atMs: 2700, percent: 56, stepIdx: 2, msg: 'Stitching composite recipe collage canvas (56%)...' },
+            { atMs: 3600, percent: 70, stepIdx: 2, msg: 'Compositing recipe header and metadata badges (70%)...' },
+            { atMs: 4400, percent: 76, stepIdx: 3, msg: 'Compiling recipe instructions & ingredients manifest (76%)...' },
+            { atMs: 5200, percent: 84, stepIdx: 4, msg: 'Packaging collage and step cards into ZIP archive (84%)...' },
+            { atMs: 6000, percent: 92, stepIdx: 4, msg: 'Fast streaming binary packaging into ZIP package (92%)...' },
+            { atMs: 6800, percent: 98, stepIdx: 4, msg: 'Finalizing ZIP bundle archive package (98%)...' },
+        ]);
+
+        // Start backend polling for real progress
+        startBackendPolling();
+
+        fetch("{{ route('project.export.prepare.zip', $project['slug']) }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({
+                collage_settings: config
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                handleExportSuccess(data);
+            } else {
+                handleExportError(data.error || 'Failed to generate ZIP archive.');
+            }
+        })
+        .catch(err => {
+            handleExportError('Network error during export: ' + err.message);
+        });
+    }
+
+    function startCollageExport() {
+        currentExportType = 'collage';
+        prepareAndShowModal({
+            title: 'Rendering Master Recipe Collage',
+            subtitle: 'Stitching recipe step cells, header banners & high-DPI canvas...',
+            icon: '🖼️',
+            badge: 'Collage Infographic Studio',
+            steps: COLLAGE_PIPELINE_STEPS
+        });
+
+        saveCollageSettings(true);
+
+        startSimulatedProgress([
+            { atMs: 200, percent: 15, stepIdx: 0, msg: 'Calculating grid dimensions and DPI resolution (15%)...' },
+            { atMs: 1500, percent: 45, stepIdx: 1, msg: 'Generating step cards with HarfBuzz script overlays (45%)...' },
+            { atMs: 3200, percent: 75, stepIdx: 2, msg: 'Compositing recipe layout grid, banners & meta badges (75%)...' },
+            { atMs: 5000, percent: 90, stepIdx: 3, msg: 'Encoding output image format (90%)...' },
+        ]);
+
+        startBackendPolling();
+
+        fetch("{{ route('project.export.prepare.collage', $project['slug']) }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({
+                collage_settings: config
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                handleExportSuccess(data);
+            } else {
+                handleExportError(data.error || 'Failed to render recipe collage.');
+            }
+        })
+        .catch(err => {
+            handleExportError('Network error during collage render: ' + err.message);
+        });
+    }
+
+    function prepareAndShowModal(options) {
+        document.getElementById('export-modal-title').innerText = options.title;
+        document.getElementById('export-modal-subtitle').innerText = options.subtitle;
+        document.getElementById('export-modal-icon').innerText = options.icon;
+        document.getElementById('export-badge-tag').innerText = options.badge;
+
+        document.getElementById('export-completed-section').classList.add('hidden');
+        document.getElementById('export-error-section').classList.add('hidden');
+        document.getElementById('export-modal-close-btn').classList.add('hidden');
+
+        renderPipelineSteps(options.steps);
+        setProgressBar(5, 'Initializing background export pipeline...');
+        setStepStatus(0, 'active', null, 5);
+
+        startElapsedTimer();
+        startLiveTipsRotation();
+
+        const modal = document.getElementById('export-progress-modal');
+        modal.classList.remove('hidden');
+    }
+
+    function startSimulatedProgress(milestones) {
+        if (simulatedProgressTimer) clearTimeout(simulatedProgressTimer);
+
+        milestones.forEach((m, idx) => {
+            setTimeout(() => {
+                const isComplete = !document.getElementById('export-completed-section').classList.contains('hidden');
+                if (currentProgressPercent < m.percent && !isComplete) {
+                    setProgressBar(m.percent, m.msg);
+                    for (let i = 0; i < m.stepIdx; i++) {
+                        setStepStatus(i, 'completed');
+                    }
+                    setStepStatus(m.stepIdx, 'active', m.msg, m.percent);
+                }
+            }, m.atMs);
+        });
+    }
+
+    function startBackendPolling() {
+        if (exportPollInterval) clearInterval(exportPollInterval);
+
+        exportPollInterval = setInterval(() => {
+            fetch("{{ route('project.export.status', $project['slug']) }}", {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.percent !== undefined) {
+                    const pct = data.percent;
+                    if (pct > currentProgressPercent && pct < 100) {
+                        setProgressBar(pct, data.message || 'Processing assets...');
+
+                        const stepIdx = data.step_index !== undefined ? data.step_index : (
+                            data.stage === 'prep' ? 0 :
+                            data.stage === 'cards' ? 1 :
+                            data.stage === 'collage' ? 2 :
+                            data.stage === 'manifest' ? 3 :
+                            (data.stage === 'zip' || data.stage === 'compressing') ? 4 : 0
+                        );
+
+                        for (let i = 0; i < stepIdx; i++) {
+                            setStepStatus(i, 'completed');
+                        }
+                        setStepStatus(stepIdx, 'active', data.message || 'Processing...', pct);
+                    }
+                }
+            })
+            .catch(() => {
+                // Ignore transient network poll errors
+            });
+        }, 300);
+    }
+
+    let lastExportResult = null;
+
+    function handleExportSuccess(data) {
+        clearInterval(exportPollInterval);
+        clearInterval(exportTimerInterval);
+        clearInterval(exportTipsInterval);
+        if (simulatedProgressTimer) clearTimeout(simulatedProgressTimer);
+
+        setProgressBar(100, 'Export pipeline finished successfully!');
+
+        // Mark all pipeline steps completed
+        activePipelineSteps.forEach((_, idx) => {
+            setStepStatus(idx, 'completed');
+        });
+
+        lastExportResult = {
+            download_url: data.download_url,
+            filename: data.filename,
+            file_size: data.file_size,
+            type: currentExportType,
+            saved_path: null
+        };
+
+        // Update details in complete card
+        const detailsEl = document.getElementById('export-result-details');
+        const openFolderBtn = document.getElementById('export-open-folder-btn');
+        if (detailsEl) {
+            const countText = data.total_cards ? `${data.total_cards} Cards Included • ` : '';
+            detailsEl.innerText = `${data.filename || 'Recipe Export'} • ${countText}${data.file_size || ''}`;
+        }
+
+        if (openFolderBtn) {
+            openFolderBtn.classList.add('hidden');
+        }
+
+        setExportDownloadStatus('Saving file to your device...', true);
+
+        document.getElementById('export-completed-section').classList.remove('hidden');
+        document.getElementById('export-modal-close-btn').classList.remove('hidden');
+
+        // Automatically trigger file download immediately
+        if (data.download_url) {
+            triggerFileDownload(data.download_url, data.filename || '');
+        }
+
+        showToast('Export complete! Your download has started automatically.');
+    }
+
+    function setExportDownloadStatus(message, isPending = false) {
+        const textEl = document.getElementById('export-download-status-text');
+        const pingDot = document.getElementById('export-download-ping-dot');
+        if (textEl) {
+            textEl.innerText = message;
+        }
+        if (pingDot) {
+            if (isPending) {
+                pingDot.classList.remove('hidden');
+                pingDot.classList.add('animate-ping');
+            } else {
+                pingDot.classList.add('hidden');
+                pingDot.classList.remove('animate-ping');
+            }
+        }
+    }
+
+    async function triggerFileDownload(url, filename) {
+        setExportDownloadStatus('Selecting save location...', true);
+
+        // Method 1: Try Native Desktop Save Dialog (NativePHP Electron)
+        try {
+            const response = await fetch("{{ route('project.export.native-save', $project['slug']) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    type: currentExportType,
+                    filename: filename
+                })
+            });
+
+            if (response.ok) {
+                const nativeData = await response.json();
+
+                if (nativeData.success && nativeData.native) {
+                    if (lastExportResult) {
+                        lastExportResult.saved_path = nativeData.saved_path;
+                    }
+
+                    setExportDownloadStatus(`✓ Saved to: ${nativeData.saved_path || 'device'} (Revealed in Explorer)`, false);
+
+                    const openFolderBtn = document.getElementById('export-open-folder-btn');
+                    if (openFolderBtn) {
+                        openFolderBtn.classList.remove('hidden');
+                    }
+
+                    const dlBtnLabel = document.getElementById('export-download-btn-label');
+                    if (dlBtnLabel) {
+                        dlBtnLabel.innerText = 'Save As...';
+                    }
+
+                    showToast('File saved successfully and revealed in folder!');
+                    return;
+                } else if (nativeData.native && nativeData.cancelled) {
+                    setExportDownloadStatus('Save cancelled. Click "Download Again" to save anytime.', false);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.info('Native save skipped or unavailable, using browser download:', e);
+        }
+
+        // Method 2: High-reliability In-Memory Blob Download (Web Browser fallback)
+        try {
+            setExportDownloadStatus('Downloading via browser...', true);
+
+            const fileRes = await fetch(url);
+            if (!fileRes.ok) {
+                throw new Error(`Server returned HTTP ${fileRes.status}`);
+            }
+
+            const blob = await fileRes.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const tempLink = document.createElement('a');
+            tempLink.style.display = 'none';
+            tempLink.href = blobUrl;
+            tempLink.download = filename || (currentExportType === 'zip' ? 'recipe_bundle.zip' : 'recipe_collage.jpg');
+            document.body.appendChild(tempLink);
+            tempLink.click();
+
+            setTimeout(() => {
+                if (document.body.contains(tempLink)) {
+                    document.body.removeChild(tempLink);
+                }
+                window.URL.revokeObjectURL(blobUrl);
+            }, 4000);
+
+            setExportDownloadStatus('✓ Downloaded automatically to your Downloads folder!', false);
+            showToast('Download complete! Check your Downloads folder.');
+        } catch (err) {
+            console.warn('Blob download encountered an issue, falling back to direct anchor:', err);
+
+            // Method 3: Direct anchor click fallback
+            try {
+                const fallbackLink = document.createElement('a');
+                fallbackLink.href = url;
+                fallbackLink.download = filename || '';
+                fallbackLink.target = '_blank';
+                fallbackLink.style.display = 'none';
+                document.body.appendChild(fallbackLink);
+                fallbackLink.click();
+                setTimeout(() => {
+                    if (document.body.contains(fallbackLink)) {
+                        document.body.removeChild(fallbackLink);
+                    }
+                }, 2000);
+
+                setExportDownloadStatus('✓ Download initiated.', false);
+            } catch (fallbackErr) {
+                setExportDownloadStatus('Download could not be initiated automatically. Please click "Download Again".', false);
+            }
+        }
+    }
+
+    function downloadExportedFileAgain() {
+        if (!lastExportResult || !lastExportResult.download_url) {
+            if (currentExportType === 'zip') {
+                startZipExport();
+            } else {
+                startCollageExport();
+            }
+            return;
+        }
+
+        triggerFileDownload(lastExportResult.download_url, lastExportResult.filename || '');
+    }
+
+    function openExportDestinationFolder() {
+        const path = lastExportResult ? lastExportResult.saved_path : null;
+
+        fetch("{{ route('project.export.open-folder', $project['slug']) }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ path: path })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Opened export folder in File Explorer.');
+            } else {
+                showToast(data.error || 'Could not open folder in Explorer.');
+            }
+        })
+        .catch(err => {
+            showToast('Unable to open explorer: ' + err.message);
+        });
+    }
+
+    function handleExportError(errorMessage) {
+        clearInterval(exportPollInterval);
+        clearInterval(exportTimerInterval);
+        clearInterval(exportTipsInterval);
+        if (simulatedProgressTimer) clearTimeout(simulatedProgressTimer);
+
+        document.getElementById('export-error-message').innerText = errorMessage;
+        document.getElementById('export-error-section').classList.remove('hidden');
+        document.getElementById('export-modal-close-btn').classList.remove('hidden');
+    }
+
+    function retryCurrentExport() {
+        document.getElementById('export-error-section').classList.add('hidden');
+        if (currentExportType === 'zip') {
+            startZipExport();
+        } else {
+            startCollageExport();
+        }
+    }
+
+    function closeExportModal() {
+        clearInterval(exportPollInterval);
+        clearInterval(exportTimerInterval);
+        clearInterval(exportTipsInterval);
+        if (simulatedProgressTimer) clearTimeout(simulatedProgressTimer);
+
+        document.getElementById('export-progress-modal').classList.add('hidden');
     }
 </script>
 @endsection

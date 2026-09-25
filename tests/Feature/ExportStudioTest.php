@@ -4,14 +4,15 @@ use App\Services\ProjectService;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
-    $this->tempDir = storage_path('testing_export_'.uniqid());
+    $this->tempDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'rfs_test_'.uniqid();
     config(['recipe-studio.projects_directory' => $this->tempDir]);
     File::ensureDirectoryExists($this->tempDir);
 });
 
 afterEach(function () {
+    gc_collect_cycles();
     if (File::exists($this->tempDir)) {
-        File::deleteDirectory($this->tempDir);
+        @File::deleteDirectory($this->tempDir);
     }
 });
 
@@ -294,4 +295,130 @@ test('downloadStepCard endpoint streams single step card download', function () 
     $response->assertOk();
     $response->assertHeader('Content-Disposition');
     expect($response->headers->get('Content-Disposition'))->toContain('frame_0001.jpg');
+});
+
+test('prepareZip endpoint generates zip bundle and returns JSON metadata', function () {
+    $project = createExportTestingProject();
+
+    $response = $this->postJson(route('project.export.prepare.zip', $project['slug']), [
+        'collage_settings' => [
+            'layout' => 'auto-grid',
+            'gap' => 16,
+            'padding' => 24,
+            'format' => 'jpg',
+        ],
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+    ]);
+    expect($response->json('download_url'))->toContain('download/zip');
+    expect($response->json('filename'))->toContain('.zip');
+    expect($response->json('file_size'))->not->toBeEmpty();
+});
+
+test('prepareCollage endpoint renders collage and returns JSON metadata', function () {
+    $project = createExportTestingProject();
+
+    $response = $this->postJson(route('project.export.prepare.collage', $project['slug']), [
+        'collage_settings' => [
+            'layout' => 'grid-2x2',
+            'gap' => 12,
+            'padding' => 20,
+            'format' => 'jpg',
+        ],
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+    ]);
+    expect($response->json('download_url'))->toContain('download/collage');
+    expect($response->json('filename'))->toContain('.jpg');
+    expect($response->json('file_size'))->not->toBeEmpty();
+});
+
+test('exportStatus endpoint returns progress state', function () {
+    $project = createExportTestingProject();
+
+    $response = $this->getJson(route('project.export.status', $project['slug']));
+
+    $response->assertOk();
+    expect($response->json())->toHaveKey('percent');
+});
+
+test('export page renders step-by-step export modal and pipeline elements', function () {
+    $project = createExportTestingProject();
+
+    $response = $this->get(route('project.export', $project['slug']));
+
+    $response->assertOk();
+    $response->assertSee('id="export-progress-modal"', false);
+    $response->assertSee('Export Execution Pipeline');
+    $response->assertSee('What\'s Happening in Background', false);
+    $response->assertSee('id="export-download-direct-btn"', false);
+    $response->assertSee('id="export-open-folder-btn"', false);
+    $response->assertSee('id="export-download-status-text"', false);
+});
+
+test('downloadZip reuses pre-generated zip bundle without duplicate rebuild', function () {
+    $project = createExportTestingProject();
+    $projectService = app(ProjectService::class);
+
+    // Prepare zip first
+    $preparedZip = $projectService->createProjectZipArchive($project['slug'], true);
+    expect($preparedZip)->not->toBeNull();
+    expect(file_exists($preparedZip))->toBeTrue();
+
+    $initialMtime = filemtime($preparedZip);
+
+    // Call downloadZip endpoint
+    $response = $this->get(route('project.export.download.zip', $project['slug']));
+    $response->assertOk();
+
+    // Verify file was reused and not overwritten
+    expect(filemtime($preparedZip))->toBe($initialMtime);
+});
+
+test('downloadCollage reuses pre-rendered collage without duplicate rebuild', function () {
+    $project = createExportTestingProject();
+    $projectService = app(ProjectService::class);
+
+    // Prepare collage first
+    $preparedCollage = $projectService->getCollageImagePath($project['slug'], true);
+    expect($preparedCollage)->not->toBeNull();
+    expect(file_exists($preparedCollage))->toBeTrue();
+
+    $initialMtime = filemtime($preparedCollage);
+
+    // Call downloadCollage endpoint
+    $response = $this->get(route('project.export.download.collage', $project['slug']));
+    $response->assertOk();
+
+    // Verify file was reused
+    expect(filemtime($preparedCollage))->toBe($initialMtime);
+});
+
+test('nativeSave endpoint returns fallback download url when native dialog is unavailable', function () {
+    $project = createExportTestingProject();
+
+    $response = $this->postJson(route('project.export.native-save', $project['slug']), [
+        'type' => 'zip',
+        'filename' => 'test_bundle.zip',
+    ]);
+
+    $response->assertOk();
+    expect($response->json())->toHaveKey('success');
+    expect($response->json('download_url'))->toContain('download/zip');
+});
+
+test('openExportFolder endpoint returns json response', function () {
+    $project = createExportTestingProject();
+
+    $response = $this->postJson(route('project.export.open-folder', $project['slug']), [
+        'path' => null,
+    ]);
+
+    $response->assertOk();
 });

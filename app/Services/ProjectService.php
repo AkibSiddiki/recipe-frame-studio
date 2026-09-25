@@ -2097,7 +2097,7 @@ class ProjectService
         return $project['collage'];
     }
 
-    public function getCollageImagePath(string $slug, bool $regenerate = false): ?string
+    public function getCollageImagePath(string $slug, bool $regenerate = false, bool $trackStandalone = true, bool $regenerateStepCards = false): ?string
     {
         $project = $this->load($slug);
         if (! $project) {
@@ -2118,12 +2118,22 @@ class ProjectService
             return $destPath;
         }
 
+        if ($trackStandalone) {
+            $this->setExportProgress($slug, [
+                'type' => 'collage',
+                'stage' => 'init',
+                'percent' => 15,
+                'message' => 'Preparing high-resolution canvas layout (15%)...',
+            ]);
+        }
+
         $selectedFrames = $this->getSelectedFrames($slug);
         $recipeSteps = $this->getRecipeSteps($slug);
         $items = $recipeSteps['items'] ?? [];
         $hasEnabledStepItems = collect($items)->contains(fn ($item) => ! empty($item['enabled']));
 
         $stepFramePaths = [];
+        $totalFrames = count($selectedFrames);
         foreach ($selectedFrames as $index => $frame) {
             $fId = $frame['filename'] ?? ($frame['id'] ?? '');
             $stepItem = collect($items)->first(fn ($it) => ($it['frame_id'] ?? '') === $fId || ($it['filename'] ?? '') === $fId);
@@ -2132,7 +2142,20 @@ class ProjectService
                 continue;
             }
 
-            $stepPath = $this->getStepFramePath($slug, $fId, $regenerate);
+            $currentStep = $index + 1;
+            $stepPercent = 15 + (int) round(($currentStep / max(1, $totalFrames)) * 40);
+            if ($trackStandalone) {
+                $this->setExportProgress($slug, [
+                    'type' => 'collage',
+                    'stage' => 'rendering_steps',
+                    'current' => $currentStep,
+                    'total' => $totalFrames,
+                    'percent' => $stepPercent,
+                    'message' => sprintf('Rendering step frame %d of %d with typography & badges (%d%%)...', $currentStep, $totalFrames, $stepPercent),
+                ]);
+            }
+
+            $stepPath = $this->getStepFramePath($slug, $fId, $regenerateStepCards);
             if ($stepPath && File::exists($stepPath)) {
                 $stepFramePaths[] = $stepPath;
             }
@@ -2142,7 +2165,26 @@ class ProjectService
             return null;
         }
 
+        if ($trackStandalone) {
+            $this->setExportProgress($slug, [
+                'type' => 'collage',
+                'stage' => 'stitching',
+                'percent' => 65,
+                'message' => 'Compositing recipe grid, header banners, and metadata (65%)...',
+            ]);
+        }
+
         $success = $this->renderCollageImage($projectPath, $stepFramePaths, $destPath, $config, $project);
+
+        if ($success && $trackStandalone) {
+            $this->setExportProgress($slug, [
+                'type' => 'collage',
+                'stage' => 'completed',
+                'percent' => 100,
+                'message' => 'Recipe collage rendered and ready (100%)!',
+                'file_size' => file_exists($destPath) ? filesize($destPath) : 0,
+            ]);
+        }
 
         return $success ? $destPath : null;
     }
@@ -2336,6 +2378,7 @@ class ProjectService
         }
 
         $format = $config['format'] === 'png' ? 'png' : 'jpg';
+        File::ensureDirectoryExists(dirname($destPath));
         if ($format === 'png') {
             $saved = imagepng($canvas, $destPath, 8);
         } else {
@@ -2347,7 +2390,20 @@ class ProjectService
         return $saved;
     }
 
-    public function createProjectZipArchive(string $slug): ?string
+    public function getProjectZipPath(string $slug): ?string
+    {
+        $projectPath = $this->getProjectPath($slug);
+        $outputDir = $projectPath.DIRECTORY_SEPARATOR.'output';
+        $zipPath = $outputDir.DIRECTORY_SEPARATOR.Str::slug($slug).'_recipe_bundle.zip';
+
+        if (File::exists($zipPath)) {
+            return $zipPath;
+        }
+
+        return null;
+    }
+
+    public function createProjectZipArchive(string $slug, bool $force = false): ?string
     {
         if (! class_exists('ZipArchive')) {
             return null;
@@ -2365,28 +2421,79 @@ class ProjectService
         }
 
         $zipPath = $outputDir.DIRECTORY_SEPARATOR.Str::slug($slug).'_recipe_bundle.zip';
-        $zip = new \ZipArchive;
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            return null;
+
+        if (! $force && File::exists($zipPath)) {
+            return $zipPath;
         }
 
-        // 1. Add Composite Collage
-        $collagePath = $this->getCollageImagePath($slug, true);
-        if ($collagePath && File::exists($collagePath)) {
-            $ext = pathinfo($collagePath, PATHINFO_EXTENSION);
-            $zip->addFile($collagePath, '00_Full_Recipe_Collage.'.$ext);
-        }
+        $this->setExportProgress($slug, [
+            'type' => 'zip',
+            'stage' => 'prep',
+            'step_index' => 0,
+            'percent' => 10,
+            'message' => 'Validating recipe assets and output directory (10%)...',
+        ]);
 
-        // 2. Add Individual Step Cards
         $selectedFrames = $this->getSelectedFrames($slug);
         $recipeSteps = $this->getRecipeSteps($slug);
         $items = $recipeSteps['items'] ?? [];
+        $totalFrames = count($selectedFrames);
+
+        // 1. Step Cards Rendering
+        foreach ($selectedFrames as $index => $frame) {
+            $fId = $frame['filename'] ?? ($frame['id'] ?? '');
+            $stepItem = collect($items)->first(fn ($it) => ($it['frame_id'] ?? '') === $fId || ($it['filename'] ?? '') === $fId);
+            $stepNum = $stepItem['step_number'] ?? ($index + 1);
+            $title = $stepItem['title'] ?? 'Step '.$stepNum;
+
+            $currentStep = $index + 1;
+            $stepPercent = 12 + (int) round(($currentStep / max(1, $totalFrames)) * 32);
+            $this->setExportProgress($slug, [
+                'type' => 'zip',
+                'stage' => 'cards',
+                'step_index' => 1,
+                'current' => $currentStep,
+                'total' => $totalFrames,
+                'percent' => $stepPercent,
+                'message' => sprintf('Rendering step card %d of %d: %s (%d%%)...', $currentStep, $totalFrames, $title ?: "Step {$currentStep}", $stepPercent),
+            ]);
+
+            $this->getStepFramePath($slug, $fId, true);
+        }
+
+        // 2. Composite Recipe Collage (Reuses freshly rendered step cards without re-rendering)
+        $this->setExportProgress($slug, [
+            'type' => 'zip',
+            'stage' => 'collage',
+            'step_index' => 2,
+            'percent' => 50,
+            'message' => 'Rendering high-resolution master recipe collage (50%)...',
+        ]);
+
+        $collagePath = $this->getCollageImagePath($slug, true, false, false);
+
+        $this->setExportProgress($slug, [
+            'type' => 'zip',
+            'stage' => 'collage',
+            'step_index' => 2,
+            'percent' => 68,
+            'message' => 'Master collage composition complete (68%).',
+        ]);
+
+        // 3. Recipe Summary & Manifest
+        $this->setExportProgress($slug, [
+            'type' => 'zip',
+            'stage' => 'manifest',
+            'step_index' => 3,
+            'percent' => 74,
+            'message' => 'Compiling recipe instructions & ingredients manifest (74%)...',
+        ]);
 
         $recipeSummaryLines = [
             '====================================================',
             'RECIPE: '.($project['name'] ?? 'Recipe Collage'),
             'Exported: '.date('Y-m-d H:i:s'),
-            'Total Steps: '.count($selectedFrames),
+            'Total Steps: '.$totalFrames,
             '====================================================',
             '',
         ];
@@ -2399,14 +2506,6 @@ class ProjectService
             $desc = $stepItem['description'] ?? '';
             $ingredients = $stepItem['ingredients'] ?? '';
 
-            $safeTitle = Str::slug($title, '_');
-            $cardFilename = sprintf('%02d_Step_%s.jpg', $stepNum, $safeTitle ?: 'Photo');
-
-            $stepPath = $this->getStepFramePath($slug, $fId);
-            if ($stepPath && File::exists($stepPath)) {
-                $zip->addFile($stepPath, 'Steps'.DIRECTORY_SEPARATOR.$cardFilename);
-            }
-
             $recipeSummaryLines[] = sprintf('STEP %d: %s', $stepNum, $title);
             if ($desc !== '') {
                 $recipeSummaryLines[] = 'Instructions: '.$desc;
@@ -2418,12 +2517,155 @@ class ProjectService
             $recipeSummaryLines[] = '';
         }
 
-        // 3. Add text summary
+        // 4. Ultra-Fast ZIP Packaging & Compression
+        // Images are already compressed; using CM_STORE avoids massive CPU burn and finishes in milliseconds!
+        $this->setExportProgress($slug, [
+            'type' => 'zip',
+            'stage' => 'zip',
+            'step_index' => 4,
+            'percent' => 80,
+            'message' => 'Opening ZIP package archive (80%)...',
+        ]);
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            $this->setExportProgress($slug, [
+                'type' => 'zip',
+                'stage' => 'error',
+                'step_index' => 0,
+                'percent' => 0,
+                'message' => 'Could not open ZIP archive for writing.',
+            ]);
+
+            return null;
+        }
+
+        if ($collagePath && File::exists($collagePath)) {
+            $ext = pathinfo($collagePath, PATHINFO_EXTENSION);
+            $collageEntry = '00_Full_Recipe_Collage.'.$ext;
+            $zip->addFile($collagePath, $collageEntry);
+            if (defined('\ZipArchive::CM_STORE')) {
+                $zip->setCompressionName($collageEntry, \ZipArchive::CM_STORE);
+            }
+        }
+
+        foreach ($selectedFrames as $index => $frame) {
+            $fId = $frame['filename'] ?? ($frame['id'] ?? '');
+            $stepItem = collect($items)->first(fn ($it) => ($it['frame_id'] ?? '') === $fId || ($it['filename'] ?? '') === $fId);
+            $stepNum = $stepItem['step_number'] ?? ($index + 1);
+            $title = $stepItem['title'] ?? 'Step '.$stepNum;
+            $safeTitle = Str::slug($title, '_');
+            $cardFilename = sprintf('%02d_Step_%s.jpg', $stepNum, $safeTitle ?: 'Photo');
+
+            $currentCard = $index + 1;
+            $zipPercent = 82 + (int) round(($currentCard / max(1, $totalFrames)) * 14);
+            $this->setExportProgress($slug, [
+                'type' => 'zip',
+                'stage' => 'zip',
+                'step_index' => 4,
+                'current' => $currentCard,
+                'total' => $totalFrames,
+                'percent' => $zipPercent,
+                'message' => sprintf('Packaging step card %d of %d into ZIP (%d%%)...', $currentCard, $totalFrames, $zipPercent),
+            ]);
+
+            $stepPath = $this->getStepFramePath($slug, $fId);
+            if ($stepPath && File::exists($stepPath)) {
+                $stepEntry = 'Steps'.DIRECTORY_SEPARATOR.$cardFilename;
+                $zip->addFile($stepPath, $stepEntry);
+                if (defined('\ZipArchive::CM_STORE')) {
+                    $zip->setCompressionName($stepEntry, \ZipArchive::CM_STORE);
+                }
+            }
+        }
+
+        $this->setExportProgress($slug, [
+            'type' => 'zip',
+            'stage' => 'zip',
+            'step_index' => 4,
+            'percent' => 98,
+            'message' => 'Adding RECIPE_SUMMARY.txt & finalizing ZIP bundle (98%)...',
+        ]);
         $zip->addFromString('RECIPE_SUMMARY.txt', implode(PHP_EOL, $recipeSummaryLines));
 
+        // Fast close! With CM_STORE on images, close() writes sequentially at raw SSD speed without CPU bottleneck!
         $zip->close();
 
-        return File::exists($zipPath) ? $zipPath : null;
+        $exists = File::exists($zipPath);
+
+        if ($exists) {
+            $this->setExportProgress($slug, [
+                'type' => 'zip',
+                'stage' => 'completed',
+                'step_index' => 5,
+                'percent' => 100,
+                'message' => 'ZIP bundle packaging complete! Ready for download (100%).',
+                'file_size' => filesize($zipPath),
+            ]);
+        }
+
+        return $exists ? $zipPath : null;
+    }
+
+    /**
+     * Store export progress payload for active project.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function setExportProgress(string $slug, array $data): void
+    {
+        try {
+            $projectPath = $this->getProjectPath($slug);
+            if (File::isDirectory($projectPath)) {
+                $statusFile = $projectPath.DIRECTORY_SEPARATOR.'export_progress.json';
+                $payload = array_merge([
+                    'slug' => $slug,
+                    'timestamp' => microtime(true),
+                ], $data);
+                @file_put_contents($statusFile, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            }
+        } catch (\Throwable) {
+            // Ignore non-critical tracking errors
+        }
+    }
+
+    /**
+     * Retrieve current export progress for a project.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getExportProgress(string $slug): ?array
+    {
+        try {
+            $projectPath = $this->getProjectPath($slug);
+            $statusFile = $projectPath.DIRECTORY_SEPARATOR.'export_progress.json';
+            if (File::exists($statusFile)) {
+                $content = @file_get_contents($statusFile);
+                if ($content) {
+                    return json_decode($content, true);
+                }
+            }
+        } catch (\Throwable) {
+            // Ignore read errors
+        }
+
+        return null;
+    }
+
+    /**
+     * Clear export progress file for project.
+     */
+    public function clearExportProgress(string $slug): void
+    {
+        try {
+            $projectPath = $this->getProjectPath($slug);
+            $statusFile = $projectPath.DIRECTORY_SEPARATOR.'export_progress.json';
+            if (File::exists($statusFile)) {
+                @unlink($statusFile);
+            }
+        } catch (\Throwable) {
+            // Ignore
+        }
     }
 
     /**

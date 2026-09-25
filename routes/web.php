@@ -41,6 +41,11 @@ Route::get('/project/{slug}/export/collage-image', [ProjectController::class, 'c
 Route::get('/project/{slug}/export/download/collage', [ProjectController::class, 'downloadCollage'])->name('project.export.download.collage');
 Route::get('/project/{slug}/export/download/zip', [ProjectController::class, 'downloadZip'])->name('project.export.download.zip');
 Route::get('/project/{slug}/export/download/step/{filename}', [ProjectController::class, 'downloadStepCard'])->name('project.export.download.step');
+Route::post('/project/{slug}/export/prepare-zip', [ProjectController::class, 'prepareZip'])->name('project.export.prepare.zip');
+Route::post('/project/{slug}/export/prepare-collage', [ProjectController::class, 'prepareCollage'])->name('project.export.prepare.collage');
+Route::get('/project/{slug}/export/status', [ProjectController::class, 'exportStatus'])->name('project.export.status');
+Route::post('/project/{slug}/export/native-save', [ProjectController::class, 'nativeSave'])->name('project.export.native-save');
+Route::post('/project/{slug}/export/open-folder', [ProjectController::class, 'openExportFolder'])->name('project.export.open-folder');
 
 Route::post('/project/{slug}/apply-last-setup/{type}', [ProjectController::class, 'applyLastSetup'])->name('project.apply-last-setup');
 
